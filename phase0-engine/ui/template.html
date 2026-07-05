@@ -267,26 +267,62 @@ function drawLegs(){
     +`<input data-i="${i}" class="ldist" type="number" min="0.1" step="0.1" value="${lg.d}"> nm`
     +`<button data-i="${i}" class="lrm" title="remove leg">✕</button></div>`).join('');
 }
+// Whole-course margin (pct) for boat b at wind w with the current course/system, or null.
+function courseMarginAt(b, w, ct){
+  const legs = st.legs.map(l=>({ distanceNm:l.d, speedLJ:polarSpeed(LJ,l.a,w,GRID), speedRival:polarSpeed(b,l.a,w,GRID) }));
+  const r = courseMargin(LJ, b, { legs, systemId:st.sys, courseType:ct, tws:w });
+  return r.status==='ok' ? r.pct : null;
+}
+// Break-even wind: scan 6→20 kt (0.25 steps) for sign changes of the corrected-time margin.
+// Returns the crossing wind(s) where LJ flips win↔lose on THIS course vs boat b.
+function breakEven(b, ct){
+  const lo=6, hi=20, step=0.25;
+  let prev=courseMarginAt(b,lo,ct), prevW=lo; const cross=[];
+  for(let w=lo+step; w<=hi+1e-9; w+=step){
+    const cur=courseMarginAt(b,w,ct);
+    if(prev!=null && cur!=null && ((prev<=0)!==(cur<=0))){
+      const t = prev/(prev-cur);                 // linear zero-crossing between prevW and w
+      cross.push({ w: prevW + t*step, to: cur>0?'win':'loss' });
+    }
+    prev=cur; prevW=w;
+  }
+  return { cross, first: courseMarginAt(b,lo,ct), last: courseMarginAt(b,hi,ct) };
+}
+function breakEvenText(be){
+  if(be.first==null) return { txt:'—', tone:'#9aa7b4' };
+  if(be.cross.length===0)
+    return be.first>0 ? { txt:'wins 6–20 kt', tone:'#1a7a43' } : { txt:'loses 6–20 kt', tone:'#b23' };
+  if(be.cross.length===1){
+    const c=be.cross[0];
+    return c.to==='loss'
+      ? { txt:`beat it below ~${c.w.toFixed(1)} kt`, tone:'#1F4E78' }
+      : { txt:`beat it above ~${c.w.toFixed(1)} kt`, tone:'#1F4E78' };
+  }
+  return { txt:`flips at ~${be.cross.map(c=>c.w.toFixed(1)).join(' / ')} kt`, tone:'#7A4EA8' };
+}
 function renderCourse(){
   const w = st.cwind, ct = courseType();
   $('#cwindv').textContent = w+' kt';
-  $('#chead').innerHTML = `<th style="text-align:left">Rival</th><th>Corrected margin</th><th>LJ elapsed</th><th>Rival elapsed</th>`;
+  $('#chead').innerHTML = `<th style="text-align:left">Rival</th><th>Margin @ ${w} kt</th><th>Break-even wind</th><th>LJ elapsed</th><th>Rival elapsed</th>`;
   let html='';
   for(const id of ROWS){
     const b = BY[id];
     const legs = st.legs.map(l=>({ distanceNm:l.d, speedLJ:polarSpeed(LJ,l.a,w,GRID), speedRival:polarSpeed(b,l.a,w,GRID) }));
     const r = courseMargin(LJ, b, { legs, systemId:st.sys, courseType:ct, tws:w });
-    if(r.status!=='ok'){ html += `<tr><td class="name">${b.name} ${dtag(b)}</td><td colspan="3" style="color:#9aa7b4;text-align:left;padding-left:10px">${r.status}</td></tr>`; continue; }
+    if(r.status!=='ok'){ html += `<tr><td class="name">${b.name} ${dtag(b)}</td><td colspan="4" style="color:#9aa7b4;text-align:left;padding-left:10px">${r.status}</td></tr>`; continue; }
     const v=r.pct, c=bg(v), ink=(v>=6||v<=-6)?'#fff':'#12212f';
+    const be = breakEvenText(breakEven(b, ct));
     html += `<tr><td class="name">${b.name} ${dtag(b)}</td>`
       + `<td class="cell" style="background:${c};color:${ink}" title="${r.tier} conf">${v>=0?'+':''}${v.toFixed(1)}${r.tier==='low'?'<small>?</small>':''}</td>`
+      + `<td style="font-weight:700;font-size:11.5px;color:${be.tone}">${be.txt}</td>`
       + `<td>${fmtT(r.elapsedLJ)}</td><td>${fmtT(r.elapsedRival)}</td></tr>`;
   }
   $('#crows').innerHTML = html;
   const dist = st.legs.reduce((s,l)=>s+(+l.d||0),0);
   $('#cfoot').innerHTML = `Whole-course corrected-time margin at <b>${w} kt</b>, ${sysName()}, over ${st.legs.length} leg${st.legs.length!==1?'s':''} / ${dist.toFixed(1)} nm `
     + `(${ct==='reaching'?'contains reaching legs → confidence widened to <b>low</b> — directional':'windward-leeward'}). `
-    + `Elapsed = Σ(distance ÷ boat speed) as h:mm:ss; the rating is applied to the <b>totals</b> (summed leg times), never to averaged per-leg margins. Each boat sails its own VPP optimum at each leg angle. Speeds interpolated between ORC nodes.`;
+    + `<b>Break-even wind</b> = where LJ's corrected-time result flips win↔lose on this exact course (scanned 6–20 kt); glance at the forecast to see who's beatable. `
+    + `Elapsed = Σ(distance ÷ boat speed) as h:mm:ss; the rating is applied to the <b>totals</b> (summed leg times), never to averaged per-leg margins. Each boat sails its own VPP optimum at each leg; speeds interpolated between ORC nodes.`;
 }
 
 // ---- save / load a course (validation lives in the inlined course-io) ----
