@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Little Johnka — Corrected-Time Compare</title>
+<style>
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:#e9edf1; color:#12212f; }
+  .wrap { max-width:940px; margin:0 auto; padding:18px; }
+  h1 { font-size:19px; margin:0 0 2px; }
+  .sub { color:#5a6b7d; font-size:12.5px; margin-bottom:14px; line-height:1.45; }
+  .panel { background:#fff; border:1px solid #d7dee6; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .lbl { font-size:11px; color:#5a6b7d; margin:0 0 5px; text-transform:uppercase; letter-spacing:.4px; }
+  .pos { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:12px; }
+  .pos button { border:1px solid #c7d2dd; background:#fff; border-radius:8px; padding:6px 9px; font-size:12px; font-weight:600; color:#39485a; cursor:pointer; }
+  .pos button.on { background:#1F4E78; color:#fff; border-color:#1F4E78; }
+  .pos .vmg { border-color:#1F4E78; }
+  .row2 { display:flex; flex-wrap:wrap; gap:16px 24px; align-items:flex-end; margin-bottom:10px; }
+  .seg { display:inline-flex; border:1px solid #c7d2dd; border-radius:9px; overflow:hidden; }
+  .seg button { border:0; background:#fff; padding:7px 12px; font-size:12.5px; font-weight:600; color:#39485a; cursor:pointer; }
+  .seg button.on { background:#1F4E78; color:#fff; }
+  .blurb { background:#f0f5fa; border:1px solid #dce6ef; border-radius:8px; padding:8px 11px; font-size:12px; color:#33475b; margin-bottom:12px; }
+  .blurb b { color:#1F4E78; }
+  .scroll { overflow-x:auto; }
+  table { border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  th,td { text-align:center; }
+  thead th { font-size:10.5px; color:#5a6b7d; font-weight:700; padding:4px 5px; border-bottom:2px solid #d7dee6; }
+  thead th.node { color:#1F4E78; }
+  td.name { text-align:left; font-weight:700; font-size:12.5px; padding:5px 10px 5px 2px; white-space:nowrap; }
+  td.name .g { color:#9aa7b4; font-weight:500; font-size:10px; }
+  .tag { display:inline-block; font-size:9px; font-weight:700; padding:1px 5px; border-radius:10px; margin-left:4px; vertical-align:middle; }
+  .tag.spi { background:#efe7f6; color:#7A4EA8; } .tag.gen { background:#e6f0ef; color:#2c7a6b; }
+  .cell { font-size:11.5px; font-weight:700; padding:6px 4px; min-width:36px; border:1px solid #fff; color:#12212f; }
+  .cell.node { box-shadow: inset 0 0 0 2px rgba(31,78,120,.16); }
+  .cell small { font-weight:500; font-size:8px; opacity:.65; }
+  .legend { display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:11px; color:#5a6b7d; margin-top:12px; }
+  .sw { width:20px; height:12px; border-radius:3px; display:inline-block; vertical-align:middle; margin-right:3px; }
+  .foot { color:#8a97a5; font-size:11px; margin-top:10px; line-height:1.55; }
+  td.name.clk { cursor:pointer; }
+  td.name.clk:hover .nm { text-decoration:underline; text-decoration-color:#9fb2c6; }
+  td.name.sel { background:#eef4fa; border-radius:6px; }
+  td.name .nm::after { content:' ›'; color:#c0ccd8; font-weight:400; }
+  .pf { margin-top:14px; }
+  .pf h2 { font-size:15px; margin:0 0 2px; }
+  .pf .meta { color:#5a6b7d; font-size:12px; margin-bottom:9px; }
+  .pf .verdict { background:#f0f5fa; border:1px solid #dce6ef; border-radius:8px; padding:9px 11px; font-size:12.5px; line-height:1.55; margin-bottom:10px; }
+  .pf .verdict b { color:#1F4E78; }
+  .pft { border-collapse:collapse; font-size:11px; }
+  .pft thead th { color:#5a6b7d; font-weight:700; padding:3px 6px; border-bottom:2px solid #d7dee6; }
+  .pft td.a { text-align:left; color:#3a4a5b; font-weight:600; padding:4px 10px 4px 2px; white-space:nowrap; }
+  .pfcell { min-width:36px; padding:5px 3px; font-weight:700; border:1px solid #fff; color:#12212f; text-align:center; }
+  .qflag { display:inline-block; width:14px; height:14px; border-radius:3px; background:repeating-linear-gradient(45deg,#e0c341,#e0c341 3px,#f0f5fa 3px,#f0f5fa 6px); vertical-align:middle; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Little Johnka · Corrected-Time Compare</h1>
+  <div class="sub">Pick a point of sail; see Little Johnka's corrected-time margin vs each comparable boat across the <b>full wind range</b> (every knot, interpolated from the ORC-cert nodes). Green = LJ wins, red = loses. Each boat is tagged by its downwind sail — <b>symmetric spinnaker</b> (runs deep to 180°) vs <b>asymmetric / gennaker</b> (gybes hot at ~140–150°) — read straight from its certificate.</div>
+
+  <div class="panel">
+    <div class="lbl">Point of sail — drill in</div>
+    <div class="pos" id="pos"></div>
+
+    <div class="row2">
+      <div>
+        <div class="lbl">Rating system</div>
+        <div class="seg" id="sys">
+          <button data-sys="ORC" class="on">ORC</button>
+          <button data-sys="SRS">SRS</button>
+          <button data-sys="YARDSTICK">Yardstick</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="blurb" id="blurb"></div>
+
+    <div class="scroll">
+      <table>
+        <thead><tr id="head"></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+
+    <div class="legend">
+      <span><span class="sw" style="background:#1a9850"></span>≥+6%</span>
+      <span><span class="sw" style="background:#66bd63"></span>+2</span>
+      <span><span class="sw" style="background:#e0c341"></span>±2</span>
+      <span><span class="sw" style="background:#f46d43"></span>−6</span>
+      <span><span class="sw" style="background:#d73027"></span>≤−6%</span>
+      <span style="margin-left:6px">◻ boxed = ORC cert node (6/8/10/12/14/16/20); others interpolated</span>
+      <span style="margin-left:6px"><span class="qflag"></span> <b>?</b> = directional only — lower confidence (reaching, ≤6 kt, or cross-system / APH basis)</span>
+    </div>
+    <div style="font-size:11.5px;color:#5a6b7d;margin-top:8px">Tip: <b>click a boat's name</b> for its full competitive profile.</div>
+  </div>
+  <div class="panel pf" id="profile" style="display:none;margin-top:14px"></div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script type="module">
+// ── Engine — MIRROR of ../src/engine.mjs + ratings.mjs (canonical source is src/) ──
+const SYS={ORC:{f:'gph',rate:v=>1/v},SRS:{f:'tcf',rate:v=>v},YARDSTICK:{f:'ys',rate:v=>100/v}};
+const rateOf=(b,s)=>{const raw=b?.ratings?.[SYS[s].f];return(raw==null||!Number.isFinite(raw)||raw<=0)?null:SYS[s].rate(raw);};
+function interp(arr,grid,x){ if(!arr||arr.length!==grid.length||!Number.isFinite(x))return null;
+  if(x<grid[0])return null; if(x>=grid[grid.length-1])return arr[arr.length-1];
+  for(let k=1;k<grid.length;k++){ if(x<=grid[k]){const t=(x-grid[k-1])/(grid[k]-grid[k-1]);return arr[k-1]+t*(arr[k]-arr[k-1]);} } }
+function conf(lj,rv,s,tws,course){ const mis=lj.rb&&rv.rb&&lj.rb!==rv.rb;
+  if(mis||rv.flag==='aph'||course==='reaching'||(tws!=null&&tws<=6))return'low';
+  if(s!=='ORC')return'medium';
+  const sv=lj.cv&&rv.cv&&Math.abs(+lj.cv-+rv.cv)<=1; return(rv.rb==='GPH'&&sv&&course==='windward_leeward')?'high':'medium'; }
+function speed(b,angle,tws){ const p=b.p; const row = angle==='beat'?p.beat:angle==='run'?p.run:p.r[angle]; return row?interp(row,GRID,tws):null; }
+function compareAt(lj,rv,angle,tws,s){ const course=(angle==='beat'||angle==='run')?'windward_leeward':'reaching';
+  if(rateOf(lj,s)==null||rateOf(rv,s)==null)return{status:'no_rating'};
+  const vL=speed(lj,angle,tws),vR=speed(rv,angle,tws); if(!(vL>0)||!(vR>0))return{status:'no_speed'};
+  const m=(vL/vR)*(rateOf(rv,s)/rateOf(lj,s))-1; return{status:'ok',pct:m*100,tier:conf(lj,rv,s,tws,course)}; }
+
+// ── Data — full angle polars (ORC certs). rb=rating_basis, cv=cert vintage, dn=downwind sail. ──
+const GRID=[6,8,10,12,14,16,20];
+const D={
+ lj:{name:'Little Johnka',rb:'GPH',cv:'2020',flag:'core',dn:'spi',ratings:{gph:660.2,ys:94,tcf:1.029},p:{beat:[3.51,4.14,4.34,4.41,4.48,4.51,4.40],run:[3.55,4.47,5.28,5.93,6.48,6.89,7.86],r:{52:[5.30,6.08,6.27,6.34,6.40,6.47,6.44],60:[5.58,6.28,6.46,6.54,6.58,6.67,6.68],75:[5.79,6.42,6.70,6.83,6.91,6.95,7.12],90:[5.76,6.42,6.79,7.09,7.30,7.42,7.52],110:[5.64,6.49,6.93,7.22,7.50,7.72,8.32],120:[5.46,6.38,6.88,7.40,7.80,8.12,8.70],135:[4.90,5.99,6.57,7.03,7.58,8.22,9.69],150:[4.10,5.16,6.05,6.59,7.03,7.54,8.83]}}},
+ j70:{name:'J/70',rb:'GPH',cv:'2021',flag:'core',dn:'gen',ratings:{gph:672.0,ys:94,tcf:0.987},p:{beat:[3.04,3.70,4.20,4.51,4.58,4.58,4.54],run:[3.56,4.49,5.14,5.56,6.07,6.77,9.38],r:{52:[4.63,5.55,6.02,6.31,6.46,6.51,6.57],60:[4.95,5.80,6.19,6.55,6.81,6.90,6.98],75:[5.17,5.96,6.35,6.81,7.31,7.61,7.79],90:[5.48,6.25,6.72,7.04,7.45,8.11,8.89],110:[5.56,6.35,7.10,7.83,8.30,8.76,9.90],120:[5.40,6.23,6.95,7.87,8.81,9.47,10.95],135:[4.84,5.88,6.50,7.21,8.13,9.20,12.86],150:[4.11,5.19,5.93,6.42,7.01,7.82,10.83]}}},
+ esse850:{name:'Esse 850',rb:'GPH',cv:'2021',flag:'core',dn:'gen',ratings:{gph:609.3,ys:86,tcf:1.112},p:{beat:[3.73,4.36,4.52,4.55,4.60,4.61,4.53],run:[3.97,5.03,5.78,6.37,7.13,8.11,10.74],r:{52:[5.69,6.40,6.55,6.61,6.68,6.73,6.72],60:[6.01,6.63,6.79,6.87,6.94,7.06,7.08],75:[6.22,6.87,7.20,7.38,7.48,7.61,7.82],90:[6.18,6.87,7.50,7.89,8.12,8.25,8.59],110:[6.24,7.02,7.49,7.93,8.47,9.13,9.64],120:[6.09,7.04,7.74,8.24,8.81,9.39,10.35],135:[5.46,6.62,7.43,8.43,9.51,10.29,11.74],150:[4.59,5.81,6.70,7.36,8.23,9.36,12.40]}}},
+ este24:{name:'Este 24',rb:'GPH',cv:'2021',flag:'core',dn:'gen',ratings:{gph:649.9,ys:94,tcf:1.024},p:{beat:[3.36,4.05,4.45,4.52,4.53,4.58,4.49],run:[3.68,4.62,5.28,5.78,6.34,7.09,9.79],r:{52:[5.13,5.92,6.24,6.34,6.38,6.44,6.47],60:[5.42,6.09,6.42,6.59,6.66,6.72,6.86],75:[5.62,6.22,6.64,7.03,7.22,7.31,7.58],90:[5.76,6.38,6.70,7.19,7.70,8.01,8.24],110:[5.84,6.58,7.24,7.67,8.09,8.50,9.36],120:[5.69,6.48,7.24,8.03,8.60,9.10,10.24],135:[5.04,6.09,6.76,7.52,8.50,9.71,12.01],150:[4.25,5.33,6.10,6.67,7.32,8.18,11.30]}}},
+ surprise:{name:'Surprise',rb:'GPH',cv:'2021',flag:'core',dn:'spi',ratings:{gph:686.1,ys:98,tcf:1.000},p:{beat:[3.23,3.89,4.38,4.58,4.65,4.67,4.64],run:[3.27,4.13,4.90,5.60,6.12,6.51,7.44],r:{52:[4.89,5.71,6.10,6.29,6.37,6.41,6.43],60:[5.15,5.88,6.23,6.47,6.60,6.67,6.70],75:[5.34,6.00,6.35,6.70,6.99,7.14,7.27],90:[5.27,6.04,6.48,6.79,7.16,7.54,7.96],110:[5.21,6.08,6.59,7.15,7.68,8.06,8.75],120:[5.04,5.97,6.48,7.03,7.66,8.37,9.51],135:[4.51,5.50,6.18,6.64,7.17,7.80,9.54],150:[3.78,4.77,5.63,6.22,6.64,7.14,8.35]}}},
+ melges24:{name:'Melges 24',rb:'GPH',cv:'2021',flag:'core',dn:'gen',ratings:{gph:619.0,ys:91,tcf:1.045},p:{beat:[3.37,4.11,4.58,4.73,4.77,4.78,4.81],run:[3.78,4.78,5.46,6.06,6.86,7.77,11.01],r:{52:[5.18,6.07,6.51,6.74,6.85,6.89,7.09],60:[5.51,6.28,6.76,7.14,7.29,7.38,7.66],75:[5.79,6.44,7.02,7.75,8.10,8.28,8.66],90:[5.82,6.63,7.13,7.87,8.79,9.27,9.74],110:[5.92,6.80,7.78,8.41,9.07,9.63,11.53],120:[5.79,6.67,7.66,8.82,9.56,10.17,11.99],135:[5.18,6.25,7.04,8.07,9.31,10.84,13.56],150:[4.37,5.52,6.31,7.00,7.92,8.97,12.71]}}},
+ melges32:{name:'Melges 32',rb:'GPH',cv:'2021',flag:'core',dn:'gen',ratings:{gph:534.9,ys:82,tcf:1.209},p:{beat:[4.22,4.94,5.19,5.29,5.39,5.43,5.39],run:[4.51,5.60,6.34,7.18,8.26,9.57,12.74],r:{52:[6.42,7.10,7.31,7.44,7.57,7.73,7.79],60:[6.73,7.34,7.63,7.82,7.94,8.20,8.32],75:[6.94,7.64,8.20,8.50,8.69,8.86,9.34],90:[6.94,7.64,8.50,9.13,9.51,9.77,10.28],110:[6.95,7.74,8.38,9.03,9.81,10.84,11.93],120:[6.83,7.84,8.64,9.28,10.06,10.93,12.63],135:[6.23,7.39,8.43,9.73,10.80,11.72,13.78],150:[5.21,6.47,7.41,8.29,9.53,11.05,14.71]}}},
+ ufo22:{name:'UFO 22',rb:'GPH',cv:'2021',flag:'core',dn:'gen',ratings:{gph:679.6,ys:95,tcf:null},p:{beat:[3.28,3.91,4.13,4.16,4.14,4.16,4.05],run:[3.70,4.59,5.14,5.62,6.21,6.96,9.88],r:{52:[4.98,5.68,5.88,5.94,5.95,6.02,6.01],60:[5.25,5.83,6.09,6.18,6.22,6.31,6.36],75:[5.45,5.96,6.38,6.65,6.77,6.83,7.05],90:[5.57,6.02,6.44,6.95,7.33,7.52,7.66],110:[5.64,6.33,6.82,7.19,7.60,7.98,8.88],120:[5.54,6.25,6.98,7.56,8.03,8.54,9.52],135:[5.03,5.90,6.57,7.36,8.33,9.45,11.38],150:[4.27,5.30,5.94,6.49,7.17,8.04,11.41]}}},
+ blu26:{name:'Blu 26',rb:'GPH',cv:'2020',flag:'core',dn:'spi',ratings:{gph:620.3,ys:90,tcf:1.059},p:{beat:[3.54,4.32,4.70,4.83,4.88,4.90,4.91],run:[3.77,4.70,5.51,6.15,6.71,7.41,9.62],r:{52:[5.40,6.29,6.60,6.73,6.79,6.82,6.95],60:[5.72,6.45,6.80,6.98,7.09,7.15,7.36],75:[5.96,6.58,7.05,7.45,7.66,7.79,8.00],90:[5.88,6.57,7.04,7.63,8.16,8.49,8.80],110:[5.87,6.73,7.31,7.75,8.23,8.72,9.98],120:[5.75,6.67,7.41,8.10,8.59,9.14,10.31],135:[5.16,6.33,7.00,7.79,8.78,9.97,11.54],150:[4.35,5.43,6.34,7.01,7.70,8.55,11.10]}}},
+};
+const LJ=D.lj;
+const ROWS=['esse850','melges24','j70','este24','surprise','ufo22','blu26','melges32'];
+const POS=[
+  {k:'beat',lab:'Beat VMG',node:true,sail:'jib / drifter',blurb:'The upwind VMG optimum (~40°). Little Johnka’s light-air weapon — green against the whole fleet in the drift, fading by ~10 kt as planing boats power up.'},
+  {k:'52',lab:'52°',sail:'jib',blurb:'Close-hauled / tight reach. Still jib; a hair freer than the beat.'},
+  {k:'60',lab:'60°',sail:'jib → drifter',blurb:'Close reach. In light air the drifter comes into play.'},
+  {k:'75',lab:'75°',sail:'jib → Code 0',blurb:'Fetching angle. Where the Code 0 (gennaker) starts to pay for LJ, and where planing rivals begin to stretch legs.'},
+  {k:'90',lab:'90°',sail:'Code 0',blurb:'Beam reach. The reaching zone where LJ leaks corrected time first as the breeze builds — the asymmetric boats light up here.'},
+  {k:'110',lab:'110°',sail:'Code 0 → spinnaker',blurb:'Broad reach. Transition from gennaker to spinnaker; the boat’s loss corner in a breeze.'},
+  {k:'120',lab:'120°',sail:'spinnaker',blurb:'Broad reach on the kite.'},
+  {k:'135',lab:'135°',sail:'spinnaker',blurb:'Deep broad reach. Asymmetric rivals must heat up here; LJ (symmetric) can sail lower.'},
+  {k:'150',lab:'150°',sail:'spinnaker',blurb:'Deep run angle.'},
+  {k:'run',lab:'Run VMG',node:true,sail:'spinnaker',blurb:'The downwind VMG optimum (~168–180°). Little Johnka runs deep on the symmetric kite; a medium-air strength (10–14 kt).'},
+];
+const WINDS=[6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
+const NODES=new Set(GRID);
+
+const st={pos:'beat',sys:'ORC',boat:null};
+const $=(s)=>document.querySelector(s);
+const bg=(v)=>v>=6?'#1a9850':v>=2?'#66bd63':v>=-2?'#e0c341':v>=-6?'#f46d43':'#d73027';
+
+function drawPos(){
+  $('#pos').innerHTML = POS.map(p=>`<button data-k="${p.k}" class="${p.k===st.pos?'on':''} ${p.node?'vmg':''}">${p.lab}</button>`).join('');
+}
+function render(){
+  const p=POS.find(x=>x.k===st.pos);
+  const sysN=st.sys==='ORC'?'ORC (GPH)':st.sys==='SRS'?'SRS (TCF)':'Yardstick';
+  $('#blurb').innerHTML=`<b>${p.lab}</b> — Little Johnka sail: <b>${p.sail}</b>. ${p.blurb}`;
+  $('#head').innerHTML=`<th style="text-align:left">Rival</th>`+WINDS.map(w=>`<th class="${NODES.has(w)?'node':''}">${w}</th>`).join('')+`<th></th>`;
+  let html='';
+  for(const id of ROWS){
+    const b=D[id];
+    const tag = b.dn==='spi' ? `<span class="tag spi">sym spi</span>` : `<span class="tag gen">gennaker</span>`;
+    html+=`<tr><td class="name clk ${id===st.boat?'sel':''}" data-boat="${id}"><span class="nm">${b.name}</span> ${tag}<div class="g">GPH ${b.ratings.gph}</div></td>`;
+    for(const w of WINDS){
+      const r=compareAt(LJ,b,st.pos,w,st.sys);
+      if(r.status!=='ok'){ html+=`<td class="cell" style="color:#b7c2ce">${r.status==='no_rating'?'—':'·'}</td>`; continue; }
+      const v=r.pct,c=bg(v),ink=(v>=6||v<=-6)?'#fff':'#12212f',sign=v>=0?'+':'';
+      html+=`<td class="cell ${NODES.has(w)?'node':''}" style="background:${c};color:${ink}" title="${b.name} · ${p.lab} · ${w}kt · ${sysN} · ${r.tier} conf${r.tier==='low'?' (directional)':''}">${sign}${v.toFixed(0)}${r.tier==='low'?'<small>?</small>':''}</td>`;
+    }
+    html+=`<td></td></tr>`;
+  }
+  $('#rows').innerHTML=html;
+  $('#foot').innerHTML=`Cells = LJ corrected-time margin at <b>${p.lab}</b>, ${sysN}, per wind (boxed = ORC cert node, others linear-interpolated ~0.1 kt). <b>?</b> = low confidence (reaching, ≤6 kt, or cross-system/APH) — treat as directional. <b>Downwind sail</b> is read from each cert’s gybe angles: <span class="tag spi">sym spi</span> boats run to 180°, <span class="tag gen">gennaker</span> boats gybe hot at ~140–150°. Note: LJ’s 2020 cert rates a symmetric spinnaker only — the Code 0 in the sail-plan memo appears when the certificate is renewed. Under SRS, UFO 22 has no TCF (drops out). Basis: LJ = 2020 ORC cert (GPH 660.2); rivals = their ORC certs. Engine verified 24/24, independently audited.`;
+  renderProfile();
+}
+
+// ── Per-boat competitive profile (click a name) ──
+function pctAt(b,ang,w){ const r=compareAt(LJ,b,ang,w,st.sys); return r.status==='ok'?r.pct:null; }
+function verdict(b){
+  const beat=GRID.map(w=>pctAt(b,'beat',w)), run=GRID.map(w=>pctAt(b,'run',w)), reach=GRID.map(w=>pctAt(b,'90',w));
+  let bx=null; for(let k=0;k<GRID.length;k++) if(beat[k]!=null&&beat[k]>0) bx=GRID[k];
+  let rr=null; for(let k=0;k<GRID.length;k++) if(reach[k]!=null&&reach[k]<-2){rr=GRID[k];break;}
+  const P=[];
+  if(bx==null) P.push(`<b>Upwind:</b> you don’t out-point this boat at any wind on corrected time.`);
+  else if(bx>=20) P.push(`<b>Upwind:</b> Little Johnka wins the beat across the whole range (to 20 kt).`);
+  else P.push(`<b>Upwind:</b> LJ wins the beat up to ~<b>${bx} kt</b>, then loses as it powers up.`);
+  const rv=run.map((v,k)=>({v,w:GRID[k]})).filter(x=>x.v!=null);
+  if(rv.some(x=>x.v>0)){ const best=rv.reduce((a,b)=>b.v>a.v?b:a); const last=run[GRID.length-1];
+    P.push(`<b>Run:</b> strongest at ~<b>${best.w} kt</b> (${best.v>=0?'+':''}${best.v.toFixed(0)}%)${last<-2?`, collapsing to ${last.toFixed(0)}% by 20 kt as it planes away`:', holding down the range'}.`);
+  } else P.push(`<b>Run:</b> no winning downwind window.`);
+  if(rr!=null) P.push(`<b>Reaching (90°):</b> goes red from ~<b>${rr} kt</b> — the loss corner${b.dn==='gen'?', where its gennaker lights up':''}.`);
+  else P.push(`<b>Reaching (90°):</b> stays competitive across the range.`);
+  const gd=(LJ.ratings.gph/b.ratings.gph-1)*100;
+  P.push(`<b>Rating:</b> ${b.name} is GPH ${b.ratings.gph} vs LJ 660.2 — ${Math.abs(gd)<0.05?'level':(gd>0?`LJ owes it ${gd.toFixed(1)}%`:`it owes LJ ${(-gd).toFixed(1)}%`)} of corrected time before a metre is sailed.`);
+  return P.join(' ');
+}
+function renderProfile(){
+  const el=$('#profile'); const b=D[st.boat];
+  if(!b){ el.style.display='none'; return; }
+  el.style.display='';
+  const sysN=st.sys==='ORC'?'ORC (GPH)':st.sys==='SRS'?'SRS (TCF)':'Yardstick';
+  let hm=`<table class="pft"><thead><tr><th style="text-align:left">Point of sail</th>`+GRID.map(w=>`<th>${w} kt</th>`).join('')+`</tr></thead><tbody>`;
+  for(const p of POS){
+    hm+=`<tr><td class="a">${p.lab}</td>`;
+    for(const w of GRID){ const r=compareAt(LJ,b,p.k,w,st.sys);
+      if(r.status!=='ok'){ hm+=`<td class="pfcell" style="color:#b7c2ce">·</td>`; continue; }
+      const v=r.pct,c=bg(v),ink=(v>=6||v<=-6)?'#fff':'#12212f';
+      hm+=`<td class="pfcell" style="background:${c};color:${ink}" title="${p.lab} · ${w}kt · ${r.tier}">${v>=0?'+':''}${v.toFixed(0)}${r.tier==='low'?'<small>?</small>':''}</td>`; }
+    hm+=`</tr>`; }
+  hm+=`</tbody></table>`;
+  el.innerHTML=`<h2>${b.name} — competitive profile</h2>`
+    +`<div class="meta">GPH ${b.ratings.gph} · ${b.dn==='spi'?'symmetric spinnaker (runs to 180°)':'asymmetric / gennaker (gybes ~140–150°)'} · ${b.cv} cert · vs Little Johnka on corrected time (${sysN})</div>`
+    +`<div class="verdict">${verdict(b)}</div>`
+    +`<div class="scroll">${hm}</div>`
+    +`<div style="font-size:11px;color:#8a97a5;margin-top:8px">Green = LJ wins on corrected time, red = loses. Cert nodes only (6–20 kt); the main table above interpolates every knot for the selected point of sail.</div>`;
+}
+$('#pos').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;st.pos=b.dataset.k;drawPos();render();});
+$('#sys').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;st.sys=b.dataset.sys;[...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b));render();});
+$('#rows').addEventListener('click',e=>{const td=e.target.closest('td.name');if(!td)return;st.boat=(st.boat===td.dataset.boat)?null:td.dataset.boat;render();});
+drawPos(); render();
+</script>
+</body>
+</html>
