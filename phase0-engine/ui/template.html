@@ -87,6 +87,14 @@
       </div>
     </div>
 
+    <div style="margin-bottom:12px">
+      <div class="lbl">Fleet — which boats to compare <span id="fleetCount" style="color:#1F4E78;font-weight:700"></span>
+        <button id="fleetAll" class="pbtn" style="padding:2px 7px;margin-left:6px">all</button>
+        <button id="fleetNone" class="pbtn" style="padding:2px 7px">none</button>
+      </div>
+      <div class="pos" id="fleet"></div>
+    </div>
+
     <!-- ============ VIEW: by point of sail ============ -->
     <div id="viewPos">
       <div class="lbl">Point of sail — drill in</div>
@@ -163,8 +171,9 @@
 const BY = Object.fromEntries(DATA.boats.filter(b => b.polar).map(b => [b.id, b]));
 const LJ = BY.lj, GRID = DATA._meta.tws_grid, REG = DATA._meta.sail_regime_LJ;
 const ROWS = ['esse850','melges24','j70','este24','surprise','ufo22','blu26','melges32'];
+const activeRows = () => ROWS.filter(id => st.fleet.has(id));
 const ANGLES = [['beat','Beat VMG'],['52','52°'],['60','60°'],['75','75°'],['90','90°'],['110','110°'],['120','120°'],['135','135°'],['150','150°'],['run','Run VMG']];
-const st = { pos:'beat', sys:'ORC', boat:null, view:'pos', cwind:10, legs:presetLegs('wl') };
+const st = { pos:'beat', sys:'ORC', boat:null, view:'pos', cwind:10, legs:presetLegs('wl'), fleet:new Set(ROWS) };
 const $ = (s) => document.querySelector(s);
 const bg = (v) => v>=6?'#1a9850':v>=2?'#66bd63':v>=-2?'#e0c341':v>=-6?'#f46d43':'#d73027';
 const sysName = () => st.sys==='ORC'?'ORC (GPH)':st.sys==='SRS'?'SRS (TCF)':'Yardstick';
@@ -192,12 +201,19 @@ const cmp = (b, ang, w) => compareAt(LJ, b, { angle:ang, tws:w, systemId:st.sys,
 function drawPos(){
   $('#pos').innerHTML = POS.map(p=>`<button data-k="${p.k}" class="${p.k===st.pos?'on':''} ${p.node?'vmg':''}">${p.lab}</button>`).join('');
 }
+function drawFleet(){
+  $('#fleet').innerHTML = ROWS.map(id=>`<button data-boat="${id}" class="${st.fleet.has(id)?'on':''}">${BY[id].name}</button>`).join('');
+  $('#fleetCount').textContent = `(${st.fleet.size}/${ROWS.length})`;
+}
+function reRender(){ st.view==='pos' ? render() : renderCourse(); }
 function render(){
   const p = POS.find(x=>x.k===st.pos);
   $('#blurb').innerHTML = `<b>${p.lab}</b> — Little Johnka sail: <b>${REG[p.k]}</b>. ${p.blurb}`;
   $('#head').innerHTML = `<th style="text-align:left">Rival</th>`+WINDS.map(w=>`<th class="${NODES.has(w)?'node':''}">${w}</th>`).join('')+`<th></th>`;
   let html='';
-  for(const id of ROWS){
+  const rows = activeRows();
+  if(rows.length===0) html = `<tr><td class="name" colspan="${WINDS.length+2}" style="color:#9aa7b4;font-weight:500">No boats selected — pick a fleet above.</td></tr>`;
+  for(const id of rows){
     const b = BY[id];
     html += `<tr><td class="name clk ${id===st.boat?'sel':''}" data-boat="${id}"><span class="nm">${b.name}</span> ${dtag(b)}<div class="g">GPH ${b.ratings.gph}</div></td>`;
     for(const w of WINDS){
@@ -305,7 +321,9 @@ function renderCourse(){
   $('#cwindv').textContent = w+' kt';
   $('#chead').innerHTML = `<th style="text-align:left">Rival</th><th>Margin @ ${w} kt</th><th>Break-even wind</th><th>LJ elapsed</th><th>Rival elapsed</th>`;
   let html='';
-  for(const id of ROWS){
+  const rows = activeRows();
+  if(rows.length===0) html = `<tr><td class="name" colspan="5" style="color:#9aa7b4;font-weight:500">No boats selected — pick a fleet above.</td></tr>`;
+  for(const id of rows){
     const b = BY[id];
     const legs = st.legs.map(l=>({ distanceNm:l.d, speedLJ:polarSpeed(LJ,l.a,w,GRID), speedRival:polarSpeed(b,l.a,w,GRID) }));
     const r = courseMargin(LJ, b, { legs, systemId:st.sys, courseType:ct, tws:w });
@@ -368,7 +386,14 @@ $('#loadFile').addEventListener('change', e=>{ const f=e.target.files[0]; if(!f)
   r.onload=()=>{ try{ applyCourse(JSON.parse(r.result)); } catch(err){ cstat('load failed: '+err.message, true); } };
   r.onerror=()=>cstat('could not read file', true); r.readAsText(f); e.target.value=''; });
 
-drawPos(); drawLegs(); showView();
+$('#fleet').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; const id=b.dataset.boat;
+  if(st.fleet.has(id)) st.fleet.delete(id); else st.fleet.add(id);
+  if(st.boat && !st.fleet.has(st.boat)) st.boat=null;   // hide profile for a de-selected boat
+  drawFleet(); reRender(); });
+$('#fleetAll').addEventListener('click', ()=>{ st.fleet=new Set(ROWS); drawFleet(); reRender(); });
+$('#fleetNone').addEventListener('click', ()=>{ st.fleet=new Set(); st.boat=null; drawFleet(); reRender(); });
+
+drawPos(); drawFleet(); drawLegs(); showView();
 </script>
 </body>
 </html>
