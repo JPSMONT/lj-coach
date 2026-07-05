@@ -18,7 +18,7 @@
   .pos button { border:1px solid #c7d2dd; background:#fff; border-radius:8px; padding:6px 9px; font-size:12px; font-weight:600; color:#39485a; cursor:pointer; }
   .pos button.on { background:#1F4E78; color:#fff; border-color:#1F4E78; }
   .pos .vmg { border-color:#1F4E78; }
-  .row2 { display:flex; flex-wrap:wrap; gap:16px 24px; align-items:flex-end; margin-bottom:10px; }
+  .row2 { display:flex; flex-wrap:wrap; gap:16px 24px; align-items:flex-end; margin-bottom:12px; }
   .seg { display:inline-flex; border:1px solid #c7d2dd; border-radius:9px; overflow:hidden; }
   .seg button { border:0; background:#fff; padding:7px 12px; font-size:12.5px; font-weight:600; color:#39485a; cursor:pointer; }
   .seg button.on { background:#1F4E78; color:#fff; }
@@ -53,17 +53,22 @@
   .pft td.a { text-align:left; color:#3a4a5b; font-weight:600; padding:4px 10px 4px 2px; white-space:nowrap; }
   .pfcell { min-width:36px; padding:5px 3px; font-weight:700; border:1px solid #fff; color:#12212f; text-align:center; }
   .qflag { display:inline-block; width:14px; height:14px; border-radius:3px; background:repeating-linear-gradient(45deg,#e0c341,#e0c341 3px,#f0f5fa 3px,#f0f5fa 6px); vertical-align:middle; }
+  .leg { display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:12.5px; }
+  .leg .lgi { width:18px; height:18px; border-radius:50%; background:#eef4fa; color:#1F4E78; font-weight:700; font-size:11px; display:inline-flex; align-items:center; justify-content:center; flex:none; }
+  .lang { padding:4px 6px; border:1px solid #c7d2dd; border-radius:6px; font-size:12px; }
+  .ldist { width:64px; padding:4px 6px; border:1px solid #c7d2dd; border-radius:6px; font-size:12px; }
+  .lrm { border:0; background:#f3e6e6; color:#b23; border-radius:6px; padding:3px 8px; cursor:pointer; font-weight:700; }
+  .pbtn { border:1px solid #c7d2dd; background:#fff; border-radius:8px; padding:5px 9px; font-size:12px; font-weight:600; color:#39485a; cursor:pointer; margin-right:5px; margin-bottom:4px; }
+  .cwrap { display:flex; align-items:center; gap:8px; }
+  input[type=range] { accent-color:#1F4E78; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Little Johnka · Corrected-Time Compare</h1>
-  <div class="sub">Pick a point of sail; see Little Johnka's corrected-time margin vs each comparable boat across the <b>full wind range</b> (every knot, interpolated from the ORC-cert nodes). Green = LJ wins, red = loses. Each boat is tagged by its downwind sail — <b>symmetric spinnaker</b> (runs deep to 180°) vs <b>asymmetric / gennaker</b> (gybes hot at ~140–150°) — read straight from its certificate.</div>
+  <div class="sub" id="intro"></div>
 
   <div class="panel">
-    <div class="lbl">Point of sail — drill in</div>
-    <div class="pos" id="pos"></div>
-
     <div class="row2">
       <div>
         <div class="lbl">Rating system</div>
@@ -73,28 +78,67 @@
           <button data-sys="YARDSTICK">Yardstick</button>
         </div>
       </div>
+      <div>
+        <div class="lbl">View</div>
+        <div class="seg" id="view">
+          <button data-view="pos" class="on">By point of sail</button>
+          <button data-view="course">By course</button>
+        </div>
+      </div>
     </div>
 
-    <div class="blurb" id="blurb"></div>
-
-    <div class="scroll">
-      <table>
-        <thead><tr id="head"></tr></thead>
-        <tbody id="rows"></tbody>
-      </table>
+    <!-- ============ VIEW: by point of sail ============ -->
+    <div id="viewPos">
+      <div class="lbl">Point of sail — drill in</div>
+      <div class="pos" id="pos"></div>
+      <div class="blurb" id="blurb"></div>
+      <div class="scroll">
+        <table>
+          <thead><tr id="head"></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="legend">
+        <span><span class="sw" style="background:#1a9850"></span>≥+6%</span>
+        <span><span class="sw" style="background:#66bd63"></span>+2</span>
+        <span><span class="sw" style="background:#e0c341"></span>±2</span>
+        <span><span class="sw" style="background:#f46d43"></span>−6</span>
+        <span><span class="sw" style="background:#d73027"></span>≤−6%</span>
+        <span style="margin-left:6px">◻ boxed = ORC cert node (6/8/10/12/14/16/20); others interpolated</span>
+        <span style="margin-left:6px"><span class="qflag"></span> <b>?</b> = directional only — lower confidence (reaching, ≤6 kt, or cross-system / APH basis)</span>
+      </div>
+      <div style="font-size:11.5px;color:#5a6b7d;margin-top:8px">Tip: <b>click a boat's name</b> for its full competitive profile.</div>
     </div>
 
-    <div class="legend">
-      <span><span class="sw" style="background:#1a9850"></span>≥+6%</span>
-      <span><span class="sw" style="background:#66bd63"></span>+2</span>
-      <span><span class="sw" style="background:#e0c341"></span>±2</span>
-      <span><span class="sw" style="background:#f46d43"></span>−6</span>
-      <span><span class="sw" style="background:#d73027"></span>≤−6%</span>
-      <span style="margin-left:6px">◻ boxed = ORC cert node (6/8/10/12/14/16/20); others interpolated</span>
-      <span style="margin-left:6px"><span class="qflag"></span> <b>?</b> = directional only — lower confidence (reaching, ≤6 kt, or cross-system / APH basis)</span>
+    <!-- ============ VIEW: by course ============ -->
+    <div id="viewCourse" style="display:none">
+      <div class="row2">
+        <div>
+          <div class="lbl">Wind</div>
+          <div class="cwrap"><input id="cwind" type="range" min="6" max="20" step="1" value="10"><span id="cwindv" style="font-weight:700;color:#1F4E78">10 kt</span></div>
+        </div>
+        <div>
+          <div class="lbl">Preset course</div>
+          <span id="presets">
+            <button class="pbtn" data-preset="wl">Windward / Leeward</button>
+            <button class="pbtn" data-preset="tri">Triangle</button>
+            <button class="pbtn" data-preset="coastal">Coastal (reach-heavy)</button>
+          </span>
+        </div>
+      </div>
+      <div class="lbl">Legs (angle × distance) — Little Johnka &amp; each rival sail their own optimum at each leg</div>
+      <div id="legs"></div>
+      <button id="addLeg" class="pbtn" style="margin-top:2px">+ add leg</button>
+      <div class="scroll" style="margin-top:14px">
+        <table>
+          <thead><tr id="chead"></tr></thead>
+          <tbody id="crows"></tbody>
+        </table>
+      </div>
+      <div class="foot" id="cfoot"></div>
     </div>
-    <div style="font-size:11.5px;color:#5a6b7d;margin-top:8px">Tip: <b>click a boat's name</b> for its full competitive profile.</div>
   </div>
+
   <div class="panel pf" id="profile" style="display:none;margin-top:14px"></div>
   <div class="foot" id="foot"></div>
 </div>
@@ -108,10 +152,20 @@
 //__ENGINE__//
 //__DATA__//
 
-// ---- UI ----
+// ---- shared ----
 const BY = Object.fromEntries(DATA.boats.filter(b => b.polar).map(b => [b.id, b]));
 const LJ = BY.lj, GRID = DATA._meta.tws_grid, REG = DATA._meta.sail_regime_LJ;
 const ROWS = ['esse850','melges24','j70','este24','surprise','ufo22','blu26','melges32'];
+const ANGLES = [['beat','Beat VMG'],['52','52°'],['60','60°'],['75','75°'],['90','90°'],['110','110°'],['120','120°'],['135','135°'],['150','150°'],['run','Run VMG']];
+const st = { pos:'beat', sys:'ORC', boat:null, view:'pos', cwind:10, legs:presetLegs('wl') };
+const $ = (s) => document.querySelector(s);
+const bg = (v) => v>=6?'#1a9850':v>=2?'#66bd63':v>=-2?'#e0c341':v>=-6?'#f46d43':'#d73027';
+const sysName = () => st.sys==='ORC'?'ORC (GPH)':st.sys==='SRS'?'SRS (TCF)':'Yardstick';
+const dtag = (b) => b.downwind_sail==='symmetric'
+  ? '<span class="tag spi">sym spi</span>' : '<span class="tag gen">gennaker</span>';
+$('#intro').innerHTML = `Two ways to read Little Johnka's corrected-time position vs the fleet — all on ORC-certificate polars. <b>By point of sail:</b> margin at one angle across the full wind range. <b>By course:</b> build a real course from legs and get the whole-course result (summed leg times, then the rating applied to the totals). Green = LJ wins, red = loses.`;
+
+// ==================== VIEW: by point of sail ====================
 const POS = [
   { k:'beat', lab:'Beat VMG', node:true, blurb:'The upwind VMG optimum (~40°). Little Johnka’s light-air weapon — green against the whole fleet in the drift, fading by ~10 kt as planing boats power up.' },
   { k:'52',  lab:'52°',  blurb:'Close-hauled / tight reach. Still jib; a hair freer than the beat.' },
@@ -126,21 +180,14 @@ const POS = [
 ];
 const WINDS = [6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
 const NODES = new Set(GRID);
-const st = { pos:'beat', sys:'ORC', boat:null };
-const $ = (s) => document.querySelector(s);
-const bg = (v) => v>=6?'#1a9850':v>=2?'#66bd63':v>=-2?'#e0c341':v>=-6?'#f46d43':'#d73027';
-const sysName = () => st.sys==='ORC'?'ORC (GPH)':st.sys==='SRS'?'SRS (TCF)':'Yardstick';
 const cmp = (b, ang, w) => compareAt(LJ, b, { angle:ang, tws:w, systemId:st.sys, grid:GRID });
-const dtag = (b) => b.downwind_sail==='symmetric'
-  ? '<span class="tag spi">sym spi</span>' : '<span class="tag gen">gennaker</span>';
 
 function drawPos(){
   $('#pos').innerHTML = POS.map(p=>`<button data-k="${p.k}" class="${p.k===st.pos?'on':''} ${p.node?'vmg':''}">${p.lab}</button>`).join('');
 }
 function render(){
   const p = POS.find(x=>x.k===st.pos);
-  const sail = REG[p.k];
-  $('#blurb').innerHTML = `<b>${p.lab}</b> — Little Johnka sail: <b>${sail}</b>. ${p.blurb}`;
+  $('#blurb').innerHTML = `<b>${p.lab}</b> — Little Johnka sail: <b>${REG[p.k]}</b>. ${p.blurb}`;
   $('#head').innerHTML = `<th style="text-align:left">Rival</th>`+WINDS.map(w=>`<th class="${NODES.has(w)?'node':''}">${w}</th>`).join('')+`<th></th>`;
   let html='';
   for(const id of ROWS){
@@ -155,11 +202,9 @@ function render(){
     html += `<td></td></tr>`;
   }
   $('#rows').innerHTML = html;
-  $('#foot').innerHTML = `Cells = LJ corrected-time margin at <b>${p.lab}</b>, ${sysName()}, per wind (boxed = ORC cert node, others linear-interpolated ~0.1 kt). <b>?</b> = low confidence (reaching, ≤6 kt, or cross-system/APH) — treat as directional. <b>Downwind sail</b> read from each cert’s gybe angles: <span class="tag spi">sym spi</span> boats run to 180°, <span class="tag gen">gennaker</span> boats gybe hot at ~140–150°. Note: LJ’s 2020 cert rates a symmetric spinnaker only — the Code 0 in the sail-plan memo appears when the certificate is renewed. Under SRS, UFO 22 has no TCF (drops out). Basis: LJ = 2020 ORC cert (GPH 660.2); rivals = their ORC certs. Engine inlined from src/ (24/24 acceptance vectors, independently audited).`;
+  $('#foot').innerHTML = `Cells = LJ corrected-time margin at <b>${p.lab}</b>, ${sysName()}, per wind (boxed = ORC cert node, others linear-interpolated ~0.1 kt). <b>?</b> = low confidence (reaching, ≤6 kt, or cross-system/APH) — treat as directional. <b>Downwind sail</b> read from each cert’s gybe angles. Basis: LJ = 2020 ORC cert (GPH 660.2); rivals = their ORC certs. Engine inlined from src/ (24/24 acceptance vectors, independently audited).`;
   renderProfile();
 }
-
-// ---- Per-boat competitive profile (click a name) ----
 function pctAt(b, ang, w){ const r = cmp(b, ang, w); return r.status==='ok' ? r.pct : null; }
 function verdict(b){
   const beat = GRID.map(w=>pctAt(b,'beat',w)), run = GRID.map(w=>pctAt(b,'run',w)), reach = GRID.map(w=>pctAt(b,'90',w));
@@ -181,7 +226,7 @@ function verdict(b){
 }
 function renderProfile(){
   const el = $('#profile'); const b = BY[st.boat];
-  if(!b){ el.style.display='none'; return; }
+  if(!b || st.view!=='pos'){ el.style.display='none'; return; }
   el.style.display='';
   let hm = `<table class="pft"><thead><tr><th style="text-align:left">Point of sail</th>`+GRID.map(w=>`<th>${w} kt</th>`).join('')+`</tr></thead><tbody>`;
   for(const p of POS){
@@ -196,13 +241,65 @@ function renderProfile(){
     + `<div class="meta">GPH ${b.ratings.gph} · ${b.downwind_sail==='symmetric'?'symmetric spinnaker (runs to 180°)':'asymmetric / gennaker (gybes ~140–150°)'} · ${b.cert_vintage} cert · vs Little Johnka on corrected time (${sysName()})</div>`
     + `<div class="verdict">${verdict(b)}</div>`
     + `<div class="scroll">${hm}</div>`
-    + `<div style="font-size:11px;color:#8a97a5;margin-top:8px">Green = LJ wins on corrected time, red = loses. Cert nodes only (6–20 kt); the main table above interpolates every knot for the selected point of sail.</div>`;
+    + `<div style="font-size:11px;color:#8a97a5;margin-top:8px">Green = LJ wins on corrected time, red = loses. Cert nodes only (6–20 kt); the main table above interpolates every knot.</div>`;
 }
 
+// ==================== VIEW: by course ====================
+function presetLegs(kind){
+  if(kind==='wl')      return [{a:'beat',d:1.5},{a:'run',d:1.5}];
+  if(kind==='tri')     return [{a:'beat',d:1.2},{a:'90',d:1.0},{a:'150',d:1.0}];
+  if(kind==='coastal') return [{a:'90',d:2.0},{a:'110',d:1.5},{a:'75',d:1.5}];
+  return [{a:'beat',d:1.5},{a:'run',d:1.5}];
+}
+const fmtT = (h) => { const s=Math.round(h*3600), hh=Math.floor(s/3600), mm=Math.floor((s%3600)/60), ss=s%60;
+  return (hh?hh+':':'')+String(mm).padStart(hh?2:1,'0')+':'+String(ss).padStart(2,'0'); };
+const courseType = () => st.legs.every(l=>l.a==='beat'||l.a==='run') ? 'windward_leeward' : 'reaching';
+function drawLegs(){
+  $('#legs').innerHTML = st.legs.map((lg,i)=>`<div class="leg"><span class="lgi">${i+1}</span>`
+    +`<select data-i="${i}" class="lang">${ANGLES.map(([k,l])=>`<option value="${k}" ${k===lg.a?'selected':''}>${l}</option>`).join('')}</select>`
+    +`<input data-i="${i}" class="ldist" type="number" min="0.1" step="0.1" value="${lg.d}"> nm`
+    +`<button data-i="${i}" class="lrm" title="remove leg">✕</button></div>`).join('');
+}
+function renderCourse(){
+  const w = st.cwind, ct = courseType();
+  $('#cwindv').textContent = w+' kt';
+  $('#chead').innerHTML = `<th style="text-align:left">Rival</th><th>Corrected margin</th><th>LJ elapsed</th><th>Rival elapsed</th>`;
+  let html='';
+  for(const id of ROWS){
+    const b = BY[id];
+    const legs = st.legs.map(l=>({ distanceNm:l.d, speedLJ:polarSpeed(LJ,l.a,w,GRID), speedRival:polarSpeed(b,l.a,w,GRID) }));
+    const r = courseMargin(LJ, b, { legs, systemId:st.sys, courseType:ct, tws:w });
+    if(r.status!=='ok'){ html += `<tr><td class="name">${b.name} ${dtag(b)}</td><td colspan="3" style="color:#9aa7b4;text-align:left;padding-left:10px">${r.status}</td></tr>`; continue; }
+    const v=r.pct, c=bg(v), ink=(v>=6||v<=-6)?'#fff':'#12212f';
+    html += `<tr><td class="name">${b.name} ${dtag(b)}</td>`
+      + `<td class="cell" style="background:${c};color:${ink}" title="${r.tier} conf">${v>=0?'+':''}${v.toFixed(1)}${r.tier==='low'?'<small>?</small>':''}</td>`
+      + `<td>${fmtT(r.elapsedLJ)}</td><td>${fmtT(r.elapsedRival)}</td></tr>`;
+  }
+  $('#crows').innerHTML = html;
+  const dist = st.legs.reduce((s,l)=>s+(+l.d||0),0);
+  $('#cfoot').innerHTML = `Whole-course corrected-time margin at <b>${w} kt</b>, ${sysName()}, over ${st.legs.length} leg${st.legs.length!==1?'s':''} / ${dist.toFixed(1)} nm `
+    + `(${ct==='reaching'?'contains reaching legs → confidence widened to <b>low</b> — directional':'windward-leeward'}). `
+    + `Elapsed = Σ(distance ÷ boat speed) as h:mm:ss; the rating is applied to the <b>totals</b> (summed leg times), never to averaged per-leg margins. Each boat sails its own VPP optimum at each leg angle. Speeds interpolated between ORC nodes.`;
+}
+
+// ==================== view switching + events ====================
+function showView(){
+  $('#viewPos').style.display   = st.view==='pos' ? '' : 'none';
+  $('#viewCourse').style.display= st.view==='course' ? '' : 'none';
+  if(st.view==='pos') render(); else renderCourse();
+  renderProfile();
+}
+$('#sys').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; st.sys=b.dataset.sys; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); st.view==='pos'?render():renderCourse(); });
+$('#view').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; st.view=b.dataset.view; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); showView(); });
 $('#pos').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; st.pos=b.dataset.k; drawPos(); render(); });
-$('#sys').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; st.sys=b.dataset.sys; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); render(); });
 $('#rows').addEventListener('click', e=>{ const td=e.target.closest('td.name'); if(!td) return; st.boat=(st.boat===td.dataset.boat)?null:td.dataset.boat; render(); });
-drawPos(); render();
+$('#cwind').addEventListener('input', e=>{ st.cwind=+e.target.value; renderCourse(); });
+$('#presets').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; st.legs=presetLegs(b.dataset.preset); drawLegs(); renderCourse(); });
+$('#addLeg').addEventListener('click', ()=>{ st.legs.push({a:'90',d:1.0}); drawLegs(); renderCourse(); });
+$('#legs').addEventListener('change', e=>{ const el=e.target; const i=+el.dataset.i; if(el.classList.contains('lang')) st.legs[i].a=el.value; else if(el.classList.contains('ldist')) st.legs[i].d=Math.max(0.1,+el.value||0.1); renderCourse(); });
+$('#legs').addEventListener('click', e=>{ const b=e.target.closest('.lrm'); if(!b) return; if(st.legs.length<=1) return; st.legs.splice(+b.dataset.i,1); drawLegs(); renderCourse(); });
+
+drawPos(); drawLegs(); showView();
 </script>
 </body>
 </html>
