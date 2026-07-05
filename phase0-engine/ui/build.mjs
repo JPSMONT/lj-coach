@@ -26,11 +26,13 @@ function stripModule(src) {
     .replace(/^export\s+/mg, '');
 }
 
-const ratings = stripModule(read('src/ratings.mjs'));
-const engine  = stripModule(read('src/engine.mjs'));
+const ratings  = stripModule(read('src/ratings.mjs'));
+const engine   = stripModule(read('src/engine.mjs'));
+const courseIo = stripModule(read('src/course-io.mjs'));
 const engineBlock =
   `/* ---- inlined from src/ratings.mjs ---- */\n${ratings}\n` +
-  `/* ---- inlined from src/engine.mjs ---- */\n${engine}`;
+  `/* ---- inlined from src/engine.mjs ---- */\n${engine}\n` +
+  `/* ---- inlined from src/course-io.mjs ---- */\n${courseIo}`;
 
 const data = read('data/boats.json').trim();
 const dataBlock = `/* ---- inlined from data/boats.json ---- */\nconst DATA = ${data};`;

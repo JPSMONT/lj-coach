@@ -129,6 +129,13 @@
       <div class="lbl">Legs (angle × distance) — Little Johnka &amp; each rival sail their own optimum at each leg</div>
       <div id="legs"></div>
       <button id="addLeg" class="pbtn" style="margin-top:2px">+ add leg</button>
+      <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <input id="cname" type="text" placeholder="course name (optional)" style="padding:5px 8px;border:1px solid #c7d2dd;border-radius:6px;font-size:12px;min-width:180px" />
+        <button id="saveCourse" class="pbtn">⤓ Save course (.json)</button>
+        <button id="loadCourse" class="pbtn">⤒ Load course</button>
+        <input id="loadFile" type="file" accept="application/json,.json" style="display:none" />
+        <span id="cstatus" style="font-size:11.5px;color:#8a97a5"></span>
+      </div>
       <div class="scroll" style="margin-top:14px">
         <table>
           <thead><tr id="chead"></tr></thead>
@@ -282,6 +289,27 @@ function renderCourse(){
     + `Elapsed = Σ(distance ÷ boat speed) as h:mm:ss; the rating is applied to the <b>totals</b> (summed leg times), never to averaged per-leg margins. Each boat sails its own VPP optimum at each leg angle. Speeds interpolated between ORC nodes.`;
 }
 
+// ---- save / load a course (validation lives in the inlined course-io) ----
+function cstat(msg, err){ const el=$('#cstatus'); el.textContent=msg; el.style.color=err?'#c0392b':'#2c7a6b'; }
+function saveCourse(){
+  const obj = serializeCourse({ name:($('#cname').value||'').trim(), wind:st.cwind, system:st.sys, legs:st.legs });
+  const blob = new Blob([JSON.stringify(obj,null,2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (obj.name ? obj.name.replace(/[^\w.-]+/g,'_') : 'lj-course') + '.json';
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+  cstat('saved ' + a.download);
+}
+function applyCourse(obj){
+  const c = parseCourse(obj, { wind:st.cwind, system:st.sys });   // throws on an unusable file
+  st.legs = c.legs; st.cwind = c.wind; st.sys = c.system;
+  $('#cname').value = c.name;
+  $('#cwind').value = st.cwind;
+  [...$('#sys').children].forEach(x=>x.classList.toggle('on', x.dataset.sys===st.sys));
+  drawLegs(); renderCourse();
+  cstat('loaded ' + c.legs.length + ' leg' + (c.legs.length!==1?'s':'') + (c.name?` — “${c.name}”`:''));
+}
+
 // ==================== view switching + events ====================
 function showView(){
   $('#viewPos').style.display   = st.view==='pos' ? '' : 'none';
@@ -298,6 +326,11 @@ $('#presets').addEventListener('click', e=>{ const b=e.target.closest('button');
 $('#addLeg').addEventListener('click', ()=>{ st.legs.push({a:'90',d:1.0}); drawLegs(); renderCourse(); });
 $('#legs').addEventListener('change', e=>{ const el=e.target; const i=+el.dataset.i; if(el.classList.contains('lang')) st.legs[i].a=el.value; else if(el.classList.contains('ldist')) st.legs[i].d=Math.max(0.1,+el.value||0.1); renderCourse(); });
 $('#legs').addEventListener('click', e=>{ const b=e.target.closest('.lrm'); if(!b) return; if(st.legs.length<=1) return; st.legs.splice(+b.dataset.i,1); drawLegs(); renderCourse(); });
+$('#saveCourse').addEventListener('click', saveCourse);
+$('#loadCourse').addEventListener('click', ()=> $('#loadFile').click());
+$('#loadFile').addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader();
+  r.onload=()=>{ try{ applyCourse(JSON.parse(r.result)); } catch(err){ cstat('load failed: '+err.message, true); } };
+  r.onerror=()=>cstat('could not read file', true); r.readAsText(f); e.target.value=''; });
 
 drawPos(); drawLegs(); showView();
 </script>

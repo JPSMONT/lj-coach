@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { legMargin, courseMargin, confidence, compareAt, interp } from '../src/engine.mjs';
+import { serializeCourse, parseCourse } from '../src/course-io.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const data = JSON.parse(readFileSync(join(here, '../data/boats.json'), 'utf8'));
@@ -129,6 +130,40 @@ checkTier('Ct1', 'Esse ORC W/L @10kt → high', confidence(LJ, B.esse850, 'ORC',
 checkTier('Ct2', 'Esse ORC W/L @6kt (light) → low', confidence(LJ, B.esse850, 'ORC', { tws: 6, courseType: 'windward_leeward' }), 'low');
 checkTier('Ct3', 'Melges32 SRS (cross-system) → medium', confidence(LJ, B.melges32, 'SRS', { tws: 10, courseType: 'windward_leeward' }), 'medium');
 checkTier('Ct4', 'Psaros33 APH-vs-GPH basis mismatch → low', confidence(LJ, B.psaros33, 'ORC', { tws: 10, courseType: 'windward_leeward' }), 'low');
+
+// ---- Course save/load (course-io) ----
+function checkOk(id, desc, cond) {
+  console.log(`${cond ? 'PASS' : 'FAIL'}  ${id}  ${desc}`);
+  cond ? pass++ : fail++;
+}
+function throws(fn, frag) {
+  try { fn(); return false; } catch (e) { return frag ? String(e.message).includes(frag) : true; }
+}
+// CIO1: round-trip — serialize a course, parse it back, get the same legs/wind/system/name.
+{
+  const src = { name: 'Zugersee W/L', wind: 12, system: 'SRS', legs: [{ a: 'beat', d: 1.5 }, { a: 'run', d: 1.5 }] };
+  const round = parseCourse(serializeCourse(src));
+  const ok = round.name === 'Zugersee W/L' && round.wind === 12 && round.system === 'SRS'
+    && JSON.stringify(round.legs) === JSON.stringify(src.legs);
+  checkOk('CIO1', 'course serialize → parse round-trips', ok);
+}
+// CIO2: a foreign file is rejected.
+checkOk('CIO2', 'reject unrecognised type', throws(() => parseCourse({ type: 'something-else', legs: [{ angle: 'beat', distanceNm: 1 }] }), 'unrecognised'));
+// CIO3: empty / missing legs rejected.
+checkOk('CIO3', 'reject empty legs', throws(() => parseCourse({ type: 'lj-coach-course', legs: [] }), 'no legs'));
+// CIO4: bad-angle legs are dropped; if all are bad, reject.
+checkOk('CIO4', 'drop bad legs → all bad rejects', throws(() => parseCourse({ legs: [{ angle: 'zzz', distanceNm: 1 }, { angle: 'beat', distanceNm: -3 }] }), 'invalid'));
+// CIO5: mixed legs — keep the valid one, drop the bad.
+{
+  const c = parseCourse({ legs: [{ angle: 'beat', distanceNm: 1.2 }, { angle: 'nope', distanceNm: 2 }] });
+  checkOk('CIO5', 'keep valid leg, drop invalid', c.legs.length === 1 && c.legs[0].a === 'beat' && c.legs[0].d === 1.2);
+}
+// CIO6: wind clamped to 6..20; unknown system + missing wind fall back to defaults.
+{
+  const hi = parseCourse({ wind: 40, system: 'ZZZ', legs: [{ angle: 'run', distanceNm: 1 }] }, { wind: 10, system: 'ORC' });
+  const lo = parseCourse({ wind: 1, legs: [{ angle: 'run', distanceNm: 1 }] }, { wind: 10, system: 'YARDSTICK' });
+  checkOk('CIO6', 'clamp wind + default system', hi.wind === 20 && hi.system === 'ORC' && lo.wind === 6 && lo.system === 'YARDSTICK');
+}
 
 console.log(`\n${pass} passed, ${fail} failed.`);
 process.exit(fail ? 1 : 0);
