@@ -1880,6 +1880,43 @@ const NS = 'http://www.w3.org/2000/svg';
 const VENUES = Array.isArray(DATA) ? DATA : [DATA];   // one page, multiple venues (drop a JSON in data/venues/)
 const SHORE_LABELS = { 'bol-dor': ['↑ Vaud shore (Swiss, N)', '↓ Savoie shore (French, S)'], 'zugersee': ['↑ Untersee / Cham (N)', '↓ Obersee / Arth (S)'] };
 
+// ---- course map: venue overview, or (overlay) a regatta's real GPS track + marks zoomed in ----
+// overlay = { track:[[lon,lat],...], marks:[{name,lat,lon}], label } | null
+function drawMap(D, overlay) {
+  const C = D.course, shore = D.shoreline || [];
+  const track = overlay && overlay.track && overlay.track.length ? overlay.track : null;
+  // bounds: a track zooms to its own extent (+8% pad); otherwise the whole lake outline / route
+  let lons, lats;
+  if (track) { lons = track.map((p) => p[0]); lats = track.map((p) => p[1]); }
+  else { const geo = shore.length ? shore.map((p) => [p[1], p[0]]) : [...(C.route_out || []), [C.start.lon, C.start.lat]]; lons = geo.map((p) => p[0]); lats = geo.map((p) => p[1]); }
+  let minLon = Math.min(...lons), maxLon = Math.max(...lons), minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  if (track) { const px = (maxLon - minLon) * 0.08 || 1e-3, py = (maxLat - minLat) * 0.08 || 1e-3; minLon -= px; maxLon += px; minLat -= py; maxLat += py; }
+  const midLat = (minLat + maxLat) / 2, kx = Math.cos(midLat * Math.PI / 180);
+  const Wd = (maxLon - minLon) * kx || 1e-4, Hd = (maxLat - minLat) || 1e-4, VW = 900, PAD = 34, VH = Math.round((VW - 2 * PAD) * Hd / Wd + 2 * PAD);
+  const svg = $('#svg'); svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${VW} ${VH}`);
+  const proj = (lon, lat) => [(lon - minLon) * kx / Wd * (VW - 2 * PAD) + PAD, (maxLat - lat) / Hd * (VH - 2 * PAD) + PAD];
+  const dot = (p, r, fill, label, dy) => { const c = document.createElementNS(NS, 'circle'); c.setAttribute('cx', p[0]); c.setAttribute('cy', p[1]); c.setAttribute('r', r); c.setAttribute('fill', fill); c.setAttribute('stroke', '#0c1a2a'); c.setAttribute('stroke-width', 1.5); svg.appendChild(c); if (label) { const t = document.createElementNS(NS, 'text'); t.setAttribute('x', p[0] + 8); t.setAttribute('y', p[1] + (dy || 4)); t.setAttribute('fill', '#cfe0ef'); t.setAttribute('font-size', '12'); t.textContent = label; svg.appendChild(t); } };
+  const txt = (x, y, s, anchor) => { const t = document.createElementNS(NS, 'text'); t.setAttribute('x', x); t.setAttribute('y', y); t.setAttribute('fill', '#54708a'); t.setAttribute('font-size', '11'); if (anchor) t.setAttribute('text-anchor', anchor); t.textContent = s; svg.appendChild(t); };
+  if (shore.length) { const poly = document.createElementNS(NS, 'polygon'); poly.setAttribute('points', shore.map((p) => proj(p[1], p[0]).join(',')).join(' ')); poly.setAttribute('fill', '#0e2438'); poly.setAttribute('stroke', '#33506e'); poly.setAttribute('stroke-width', 1.5); svg.appendChild(poly); }
+  if (!track) { const sl = SHORE_LABELS[D.id]; if (sl) { txt(VW / 2, 16, sl[0], 'middle'); txt(VW / 2, VH - 6, sl[1], 'middle'); } }
+  if (track) {
+    const pts = track.map((p) => proj(p[0], p[1]).join(',')).join(' ');
+    const pl = document.createElementNS(NS, 'polyline'); pl.setAttribute('points', pts); pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', '#ff5a3c'); pl.setAttribute('stroke-width', 2.5); pl.setAttribute('stroke-linejoin', 'round'); pl.setAttribute('stroke-linecap', 'round'); pl.setAttribute('opacity', '0.9'); svg.appendChild(pl);
+    (overlay.marks || []).forEach((mk) => dot(proj(mk.lon, mk.lat), 6, '#e0a92a', mk.name || '', 4));
+    dot(proj(track[0][0], track[0][1]), 5, '#5bd88a', 'Start', 4);
+    dot(proj(track[track.length - 1][0], track[track.length - 1][1]), 5, '#eaf1f7', 'Finish', 16);
+    if (overlay.label) txt(VW / 2, 16, overlay.label, 'middle');
+  } else {
+    if (C.route_out && C.route_out.length) {
+      const R = C.route_out.map((p) => proj(p[0], p[1])), pts = R.map((p) => p.join(',')).join(' ');
+      for (const [col, w, dash] of [['#ff5a3c', 3, null], ['#3ca7ff', 2, '5 5']]) { const pl = document.createElementNS(NS, 'polyline'); pl.setAttribute('points', pts); pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', col); pl.setAttribute('stroke-width', w); if (dash) { pl.setAttribute('stroke-dasharray', dash); pl.setAttribute('opacity', '0.8'); } pl.setAttribute('stroke-linejoin', 'round'); pl.setAttribute('stroke-linecap', 'round'); svg.appendChild(pl); }
+    }
+    if (C.start) dot(proj(C.start.lon, C.start.lat), 6, '#eaf1f7', 'Start · ' + C.start.time_local, 4);
+    if (C.rounding) dot(proj(C.rounding.lon, C.rounding.lat), 7, '#e0a92a', C.rounding.name, 4);
+    if (C.finish) dot(proj(C.finish.lon, C.finish.lat), 5, '#5bd88a', 'Finish', 16);
+  }
+}
+
 function render(D) {
   const C = D.course;
   $('#title').textContent = D.name;
@@ -1889,27 +1926,7 @@ function render(D) {
   $('#summary').textContent = C.summary;
 
   renderRegattas(D);   // multi-regatta venues (Zugersee) get a dropdown; single-race venues (Bol d'Or) hide it
-
-  // ---- course map (real lake outline + course/axis + marks) ----
-  const shore = D.shoreline || [];   // [[lat,lon],...] real coastline (reused from the Bol d'Or app)
-  const geo = shore.length ? shore.map((p) => [p[1], p[0]]) : [...(C.route_out || []), [C.start.lon, C.start.lat]];
-  const lons = geo.map((p) => p[0]), lats = geo.map((p) => p[1]);
-  const B = { minLon: Math.min(...lons), maxLon: Math.max(...lons), minLat: Math.min(...lats), maxLat: Math.max(...lats) };
-  const midLat = (B.minLat + B.maxLat) / 2, kx = Math.cos(midLat * Math.PI / 180);
-  const Wd = (B.maxLon - B.minLon) * kx || 1e-4, Hd = (B.maxLat - B.minLat) || 1e-4, VW = 900, PAD = 34, VH = Math.round((VW - 2 * PAD) * Hd / Wd + 2 * PAD);
-  const svg = $('#svg'); svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${VW} ${VH}`);
-  const proj = (lon, lat) => [(lon - B.minLon) * kx / Wd * (VW - 2 * PAD) + PAD, (B.maxLat - lat) / Hd * (VH - 2 * PAD) + PAD];
-  const dot = (p, r, fill, label, dy) => { const c = document.createElementNS(NS, 'circle'); c.setAttribute('cx', p[0]); c.setAttribute('cy', p[1]); c.setAttribute('r', r); c.setAttribute('fill', fill); c.setAttribute('stroke', '#0c1a2a'); c.setAttribute('stroke-width', 1.5); svg.appendChild(c); if (label) { const t = document.createElementNS(NS, 'text'); t.setAttribute('x', p[0] + 8); t.setAttribute('y', p[1] + (dy || 4)); t.setAttribute('fill', '#cfe0ef'); t.setAttribute('font-size', '12'); t.textContent = label; svg.appendChild(t); } };
-  const txt = (x, y, s, anchor) => { const t = document.createElementNS(NS, 'text'); t.setAttribute('x', x); t.setAttribute('y', y); t.setAttribute('fill', '#54708a'); t.setAttribute('font-size', '11'); if (anchor) t.setAttribute('text-anchor', anchor); t.textContent = s; svg.appendChild(t); };
-  if (shore.length) { const poly = document.createElementNS(NS, 'polygon'); poly.setAttribute('points', shore.map((p) => proj(p[1], p[0]).join(',')).join(' ')); poly.setAttribute('fill', '#0e2438'); poly.setAttribute('stroke', '#33506e'); poly.setAttribute('stroke-width', 1.5); svg.appendChild(poly); }
-  const sl = SHORE_LABELS[D.id]; if (sl) { txt(VW / 2, 16, sl[0], 'middle'); txt(VW / 2, VH - 6, sl[1], 'middle'); }
-  if (C.route_out && C.route_out.length) {
-    const R = C.route_out.map((p) => proj(p[0], p[1])), pts = R.map((p) => p.join(',')).join(' ');
-    for (const [col, w, dash] of [['#ff5a3c', 3, null], ['#3ca7ff', 2, '5 5']]) { const pl = document.createElementNS(NS, 'polyline'); pl.setAttribute('points', pts); pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', col); pl.setAttribute('stroke-width', w); if (dash) { pl.setAttribute('stroke-dasharray', dash); pl.setAttribute('opacity', '0.8'); } pl.setAttribute('stroke-linejoin', 'round'); pl.setAttribute('stroke-linecap', 'round'); svg.appendChild(pl); }
-  }
-  if (C.start) dot(proj(C.start.lon, C.start.lat), 6, '#eaf1f7', 'Start · ' + C.start.time_local, 4);
-  if (C.rounding) dot(proj(C.rounding.lon, C.rounding.lat), 7, '#e0a92a', C.rounding.name, 4);
-  if (C.finish) dot(proj(C.finish.lon, C.finish.lat), 5, '#5bd88a', 'Finish', 16);
+  drawMap(D, null);    // venue overview; a regatta with a GPS track overlays it via drawMap(D, {track,...})
 
   // ---- facts (guarded for RC-set courses) ----
   $('#facts').innerHTML = [
@@ -1979,6 +1996,8 @@ function renderRegattas(D) {
       ys.onchange = () => showYear(ys.value);
       showYear(r.editions[0].year);
     }
+    // overlay this regatta's real GPS track on the map if we have one; else the venue overview
+    drawMap(D, r.track ? { track: r.track, marks: r.marks, label: r.name + (r.track_label ? ' · ' + r.track_label : '') } : null);
   };
   $('#rpick').onchange = () => show($('#rpick').value);
   show(key(all[0]));
