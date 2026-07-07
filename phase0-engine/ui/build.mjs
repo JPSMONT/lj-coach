@@ -7,7 +7,7 @@
 //
 // Run:  node ui/build.mjs      (from phase0-engine/)
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, statSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -28,7 +28,16 @@ function stripModule(src) {
 const bundle = (names) =>
   names.map((n) => `/* ---- inlined from src/${n}.mjs ---- */\n${stripModule(read(`src/${n}.mjs`))}`).join('\n');
 
-const dataBlock = (path) => `/* ---- inlined from ${path} ---- */\nconst DATA = ${read(path).trim()};`;
+// Inline a data file as `const DATA = {...}`. If the path is a DIRECTORY, inline every *.json in
+// it as an array (used for venues: drop a data/venues/<venue>.json and it appears in the switcher).
+const dataBlock = (path) => {
+  const full = join(root, path);
+  if (statSync(full).isDirectory()) {
+    const files = readdirSync(full).filter((f) => f.endsWith('.json')).sort();
+    return `/* ---- inlined venues from ${path}/ ---- */\nconst DATA = [\n${files.map((f) => read(join(path, f)).trim()).join(',\n')}\n];`;
+  }
+  return `/* ---- inlined from ${path} ---- */\nconst DATA = ${read(path).trim()};`;
+};
 const today = new Date().toISOString().slice(0, 10);
 
 const TARGETS = [
@@ -37,7 +46,7 @@ const TARGETS = [
   { template: 'ui/rivals.template.html',  out: 'ui/rivals.html',  modules: [], data: 'data/bol-dor-2026-rivals.json' },
   { template: 'ui/debrief.template.html', out: 'ui/debrief.html', modules: [], data: 'data/bol-dor-2026-debrief.json' },
   { template: 'ui/trimlab.template.html', out: 'ui/trimlab.html', modules: [], data: 'data/trimlab-demo.json' },
-  { template: 'ui/venue.template.html',   out: 'ui/venue.html',   modules: [], data: 'data/venues/bol-dor.json' },
+  { template: 'ui/venue.template.html',   out: 'ui/venue.html',   modules: [], data: 'data/venues' },
 ];
 
 // One app, four pages: a shared sticky nav is injected into every generated page so they
