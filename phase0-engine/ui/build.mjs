@@ -37,12 +37,13 @@ const TARGETS = [
   { template: 'ui/rivals.template.html',  out: 'ui/rivals.html',  modules: [], data: 'data/bol-dor-2026-rivals.json' },
   { template: 'ui/debrief.template.html', out: 'ui/debrief.html', modules: [], data: 'data/bol-dor-2026-debrief.json' },
   { template: 'ui/trimlab.template.html', out: 'ui/trimlab.html', modules: [], data: 'data/trimlab-demo.json' },
+  { template: 'ui/venue.template.html',   out: 'ui/venue.html',   modules: [], data: 'data/venues/bol-dor.json' },
 ];
 
 // One app, four pages: a shared sticky nav is injected into every generated page so they
 // cross-link and feel like a single app, while each page stays self-contained (opens offline,
 // keeps its own audited engine inline). Order matches TARGETS.
-const NAV_TABS = [['compare.html', 'Compare'], ['cockpit.html', 'Cockpit'], ['rivals.html', 'Rivals'], ['debrief.html', 'Debrief'], ['trimlab.html', 'Trim Lab']];
+const NAV_TABS = [['compare.html', 'Compare'], ['venue.html', 'Venue'], ['cockpit.html', 'Cockpit'], ['rivals.html', 'Rivals'], ['debrief.html', 'Debrief'], ['trimlab.html', 'Trim Lab']];
 const NAV_CSS = `<style>/* injected by build.mjs — shared nav */
 .ljnav{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:2px;padding:8px 14px;background:#0b1622;border-bottom:1px solid #23384e;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
 .ljnav .brand{font-weight:800;font-size:13px;color:#ff5a3c;margin-right:12px;letter-spacing:.3px;white-space:nowrap}

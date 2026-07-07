@@ -1,0 +1,437 @@
+{
+ "id": "bol-dor",
+ "name": "Bol d'Or Mirabaud",
+ "club": "Société Nautique de Genève (SNG)",
+ "waters": "Lac Léman (Lake Geneva)",
+ "rating_system": "SRS (Swiss Rating System, Time-on-Time TCF)",
+ "our_class": "TCF3",
+ "capability_level": 4,
+ "course": {
+  "type": "distance (out-and-back)",
+  "distance_km": 123,
+  "distance_nm": 66,
+  "summary": "Mass start off Genève-Plage, east up the whole lake to round the Barge du Bouveret, then back to finish at the SNG. Longest closed-circuit inland race in the world.",
+  "start": {
+   "name": "Genève-Plage / SNG",
+   "lat": 46.223,
+   "lon": 6.163,
+   "time_local": "Sat 10:00 (CEST)",
+   "note": "Monohull line ~1500 m in 4 sections; leave the port-end mark and shore to port. LJ starts on the monohull line."
+  },
+  "rounding": {
+   "name": "Barge du Bouveret",
+   "lat": 46.3908,
+   "lon": 6.8531,
+   "note": "Monohull entry buoy (mark 8) 46.398/6.851 then round the barge (mark 9). Sunday 08:00 the barge may become an orange buoy."
+  },
+  "finish": {
+   "name": "SNG jetty, Genève",
+   "lat": 46.219,
+   "lon": 6.169,
+   "note": "Entry mark (10) 46.218/6.169, then finish at the SNG jetty. Leave the safety buoy to port."
+  },
+  "marks": [
+   {
+    "n": 8,
+    "name": "Bouveret entry (monohull SRS)",
+    "lat": 46.3983,
+    "lon": 6.8506,
+    "role": "rounding-approach"
+   },
+   {
+    "n": 9,
+    "name": "Barge du Bouveret",
+    "lat": 46.3908,
+    "lon": 6.8531,
+    "role": "rounding"
+   },
+   {
+    "n": 10,
+    "name": "Geneva entry mark",
+    "lat": 46.2183,
+    "lon": 6.1689,
+    "role": "finish-approach"
+   }
+  ],
+  "route_out": [
+   [
+    6.163,
+    46.223
+   ],
+   [
+    6.22,
+    46.3
+   ],
+   [
+    6.3,
+    46.37
+   ],
+   [
+    6.45,
+    46.42
+   ],
+   [
+    6.6,
+    46.455
+   ],
+   [
+    6.74,
+    46.45
+   ],
+   [
+    6.8531,
+    46.3908
+   ]
+  ],
+  "note": "Route waypoints trace the lake's crescent (bulges north through the Grand Lac); the return retraces it. Not the sailed track — that's on the Debrief/Rivals tabs."
+ },
+ "time_limit_local": "Sun 17:00 (CEST)",
+ "wind_climatology": {
+  "summary": "Léman is thermally driven and shore-shadowed. Mornings are often light/variable; gradient and thermal breezes build through the day. The classic Bol d'Or is a light-air drifter punctuated by local systems — 2026 had 81% of the race below 6 kt.",
+  "patterns": [
+   {
+    "name": "Bise",
+    "dir": "NE (down-lake from Geneva)",
+    "when": "cold, dry high-pressure NE; any time, often strong",
+    "character": "Steady, can be 15–30 kt; kicks up chop in the Petit Lac. Gives an upwind exit from Geneva and a downwind return.",
+    "tactics": "Bise favours the SOUTH (French/Savoie) bank upwind — stronger pressure mid-lake, the most reliable Léman pattern. Fast race, downwind return is the passing lane."
+   },
+   {
+    "name": "Vent (SW)",
+    "dir": "SW / WSW (up-lake)",
+    "when": "prevailing gradient + afternoon thermal on warm days",
+    "character": "Builds midday; fills the Petit Lac and Grand Lac from the SW. The workhorse breeze.",
+    "tactics": "Afternoon filling from the SW favours the boats that got east first; watch for it filling from behind on the outbound leg."
+   },
+   {
+    "name": "Vaudaire",
+    "dir": "SE föhn from the Rhône valley",
+    "when": "föhn conditions; strongest in the Haut Lac near Bouveret",
+    "character": "Warm, gusty, can be violent at the east end — a different world from the Petit Lac.",
+    "tactics": "Decisive at the Bouveret rounding: the east end can have breeze while the middle is glassy. Approach with a plan for a big shift/pressure change."
+   },
+   {
+    "name": "Joran / evening thermals",
+    "dir": "NW off the Jura (Joran); local Molard/Rebat/Séchard",
+    "when": "late afternoon / evening",
+    "character": "Descends on the north (Vaud) shore in the evening; local thermals off both shores.",
+    "tactics": "Overnight and evening legs reward the crew who reads the shore thermals rather than sitting in the dying gradient."
+   }
+  ]
+ },
+ "tactical_zones": [
+  {
+   "name": "Petit Lac (Geneva → Yvoire/Nyon)",
+   "knowledge": "Narrow, shifty, shore-shadowed. In light air hug the shore that has pressure — Vaud (Swiss, N) vs Savoie (French, S). Big fleet = dirty air; a clean lane matters more than the shortest line."
+  },
+  {
+   "name": "Grand Lac (widest section)",
+   "knowledge": "More gradient-driven and open. The 2026 lesson: commit to the Savoie (French, S) shore early on the return rather than beating back down the middle — that's where LJ lost ground."
+  },
+  {
+   "name": "Haut Lac / Bouveret (the rounding)",
+   "knowledge": "Mountain-influenced; Vaudaire risk. Wind and pressure can differ sharply from the middle of the lake. Plan the rounding approach for a likely shift and a possible park-up."
+  }
+ ],
+ "weather_models": [
+  "meteoswiss_icon_ch1",
+  "meteoswiss_icon_ch2",
+  "meteofrance_arome_france_hd"
+ ],
+ "lake_model": "Alplakes (waves/current only — NEVER a wind source)",
+ "tracking": {
+  "provider": "SuiviRegate (GPS) + manage2sail (results)",
+  "live": true,
+  "note": "SuiviRegate KMZ is the GPS source we replay in Rivals; manage2sail carries official SRS/TCF results."
+ },
+ "regatta_intelligence": {
+  "editions": [
+   {
+    "year": 2026,
+    "conditions": "Extraordinarily light — AROME wind on LJ's track shows 81% of the race below the 6 kt polar floor; a morning drifter with a weak afternoon SW.",
+    "note": "LJ mid-fleet in TCF3; lost ground on the Grand Lac return by not committing to the French shore early (see Debrief)."
+   }
+  ],
+  "note": "Deeper per-boat analysis (top rivals, routes, shore split) is loaded on the Rivals and Debrief tabs. Add prior editions as their GPS/results are ingested."
+ },
+ "sources": [
+  "Bol d'Or 2025 Sailing Instructions (SNG)",
+  "boldorduleman.ch",
+  "SuiviRegate",
+  "manage2sail",
+  "Venue-Data-Sources-2026-07-05 (Drive)"
+ ],
+ "shoreline": [
+  [
+   46.207,
+   6.148
+  ],
+  [
+   46.215,
+   6.175
+  ],
+  [
+   46.24,
+   6.194
+  ],
+  [
+   46.265,
+   6.197
+  ],
+  [
+   46.281,
+   6.225
+  ],
+  [
+   46.304,
+   6.242
+  ],
+  [
+   46.352,
+   6.281
+  ],
+  [
+   46.366,
+   6.308
+  ],
+  [
+   46.37,
+   6.338
+  ],
+  [
+   46.34,
+   6.388
+  ],
+  [
+   46.36,
+   6.413
+  ],
+  [
+   46.366,
+   6.446
+  ],
+  [
+   46.375,
+   6.475
+  ],
+  [
+   46.405,
+   6.513
+  ],
+  [
+   46.396,
+   6.553
+  ],
+  [
+   46.401,
+   6.594
+  ],
+  [
+   46.405,
+   6.649
+  ],
+  [
+   46.408,
+   6.688
+  ],
+  [
+   46.408,
+   6.727
+  ],
+  [
+   46.399,
+   6.768
+  ],
+  [
+   46.394,
+   6.806
+  ],
+  [
+   46.388,
+   6.83
+  ],
+  [
+   46.386,
+   6.836
+  ],
+  [
+   46.395,
+   6.86
+  ],
+  [
+   46.396,
+   6.884
+  ],
+  [
+   46.396,
+   6.908
+  ],
+  [
+   46.394,
+   6.919
+  ],
+  [
+   46.397,
+   6.924
+  ],
+  [
+   46.415,
+   6.928
+  ],
+  [
+   46.436,
+   6.908
+  ],
+  [
+   46.451,
+   6.855
+  ],
+  [
+   46.459,
+   6.839
+  ],
+  [
+   46.468,
+   6.823
+  ],
+  [
+   46.474,
+   6.788
+  ],
+  [
+   46.486,
+   6.729
+  ],
+  [
+   46.491,
+   6.714
+  ],
+  [
+   46.497,
+   6.703
+  ],
+  [
+   46.504,
+   6.656
+  ],
+  [
+   46.511,
+   6.613
+  ],
+  [
+   46.507,
+   6.553
+  ],
+  [
+   46.515,
+   6.52
+  ],
+  [
+   46.503,
+   6.492
+  ],
+  [
+   46.491,
+   6.478
+  ],
+  [
+   46.476,
+   6.45
+  ],
+  [
+   46.465,
+   6.384
+  ],
+  [
+   46.453,
+   6.337
+  ],
+  [
+   46.433,
+   6.31
+  ],
+  [
+   46.406,
+   6.283
+  ],
+  [
+   46.388,
+   6.248
+  ],
+  [
+   46.369,
+   6.23
+  ],
+  [
+   46.345,
+   6.214
+  ],
+  [
+   46.336,
+   6.204
+  ],
+  [
+   46.308,
+   6.184
+  ],
+  [
+   46.282,
+   6.167
+  ],
+  [
+   46.263,
+   6.166
+  ],
+  [
+   46.252,
+   6.153
+  ],
+  [
+   46.235,
+   6.153
+  ],
+  [
+   46.228,
+   6.15
+  ],
+  [
+   46.21,
+   6.151
+  ],
+  [
+   46.207,
+   6.148
+  ]
+ ],
+ "stations": [
+  {
+   "id": "GVE",
+   "name": "Genève / Cointrin",
+   "lat": 46.247,
+   "lon": 6.128,
+   "role": "Petit Lac SW"
+  },
+  {
+   "id": "CGI",
+   "name": "Nyon / Changins",
+   "lat": 46.401,
+   "lon": 6.243,
+   "role": "Petit Lac N shore"
+  },
+  {
+   "id": "PUY",
+   "name": "Pully (Lausanne)",
+   "lat": 46.512,
+   "lon": 6.668,
+   "role": "Grand Lac N"
+  },
+  {
+   "id": "VEV",
+   "name": "Vevey / Corseaux",
+   "lat": 46.479,
+   "lon": 6.82,
+   "role": "Haut-Lac N shore"
+  }
+ ],
+ "_reuse": "shoreline, stations & Bise insight reused from the Bol d'Or tactical app (JPSMONT/bol-dor-tactical)."
+}
