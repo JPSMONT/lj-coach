@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<!-- SOURCE TEMPLATE for rivals.html. Do NOT edit rivals.html by hand.
+     Edit this file + data/bol-dor-2026-rivals.json, then: node ui/build.mjs -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rivals — Bol d'Or 2026</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0f1c2b;color:#eaf1f7}
+  .wrap{max-width:940px;margin:0 auto;padding:18px}
+  h1{font-size:19px;margin:0 0 2px}
+  .sub{color:#8aa0b4;font-size:12.5px;margin-bottom:12px;line-height:1.45}
+  .map{background:#12283f;border:1px solid #23384e;border-radius:12px;padding:6px}
+  svg{display:block;width:100%;height:auto;background:#0c1a2a;border-radius:8px}
+  .ctl{display:flex;align-items:center;gap:10px;margin:10px 2px}
+  .ctl input[type=range]{flex:1;accent-color:#ff5a3c}
+  .pbtn{border:1px solid #2c435a;background:#16273a;border-radius:9px;padding:6px 12px;font-size:13px;font-weight:700;color:#eaf1f7;cursor:pointer}
+  .grp{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#8aa0b4;margin:14px 2px 6px;font-weight:700}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  @media(max-width:720px){.cards{grid-template-columns:repeat(2,1fr)}}
+  .card{background:#16273a;border:1px solid #23384e;border-left-width:4px;border-radius:10px;padding:9px 11px;cursor:pointer}
+  .card.dim{opacity:.38}
+  .tag{font-size:9px;font-weight:800;letter-spacing:.4px;padding:1px 6px;border-radius:9px;vertical-align:middle}
+  .tag.FOLLOW{background:#123a2a;color:#5bd88a}.tag.BENCHMARK{background:#3a2f12;color:#f1c40f}.tag.YOU{background:#3a1e17;color:#ff8a70}
+  .card .n{font-size:14px;font-weight:800;margin-top:3px}
+  .card .b{font-size:11.5px;color:#cfe0ef;margin-top:1px}
+  .card .m{font-size:11px;color:#9fb4c8;margin-top:4px;line-height:1.4}
+  table{border-collapse:collapse;width:100%;margin-top:6px;font-variant-numeric:tabular-nums}
+  th,td{text-align:right;padding:4px 8px;font-size:12px;border-bottom:1px solid #22364b}
+  th{color:#8aa0b4;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px}
+  td.l,th.l{text-align:left}
+  .foot{color:#6f889e;font-size:11px;margin-top:14px;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Rivals · Bol d'Or du Léman 2026</h1>
+  <div class="sub" id="intro"></div>
+  <div class="map"><svg id="svg" viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg"></svg></div>
+  <div class="ctl"><button class="pbtn" id="play">► Play</button><input type="range" id="scrub" min="0" max="1000" value="1000"><span id="tlabel" style="font-size:12px;font-weight:700;color:#ff5a3c;width:56px;text-align:right">full</span></div>
+  <div id="groups"></div>
+  <div class="grp">Race-window boatspeed &amp; shore tactic</div>
+  <div style="overflow-x:auto"><table id="stats"></table></div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script type="module">
+//__ENGINE__//
+//__DATA__//
+
+const B = DATA.bounds, midLat = (B.minLat + B.maxLat) / 2, kx = Math.cos(midLat * Math.PI / 180);
+const W = (B.maxLon - B.minLon) * kx, H = (B.maxLat - B.minLat), VW = 900, VH = Math.round(VW * H / W), PAD = 16;
+const svg = document.getElementById('svg'); svg.setAttribute('viewBox', `0 0 ${VW} ${VH}`);
+const NS = 'http://www.w3.org/2000/svg';
+const proj = (lon, lat) => [(lon - B.minLon) * kx / W * (VW - 2 * PAD) + PAD, (B.maxLat - lat) / H * (VH - 2 * PAD) + PAD];
+const LJ = DATA.boats.find(b => b.role === 'YOU');
+const $ = (s) => document.querySelector(s);
+let sel = null;
+
+$('#intro').innerHTML = `The refreshed TCF3 watch-list, from the ${DATA.source}. <b style="color:#5bd88a">Follow boats</b> (close pace, on-water references) vs <b style="color:#f1c40f">benchmarks</b> (the corrected-time targets). Each line is the boat's actual route — scrub to replay. Speeds below are race-window-trimmed.`;
+
+function draw(frac) {
+  svg.innerHTML = '';
+  for (const b of DATA.boats) {
+    const n = Math.max(2, Math.round(b.pts.length * frac)), seg = b.pts.slice(0, n);
+    const d = seg.map(p => proj(p[1], p[2]).join(',')).join(' '), dim = sel && sel !== b.label;
+    const pl = document.createElementNS(NS, 'polyline');
+    pl.setAttribute('points', d); pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', b.color);
+    pl.setAttribute('stroke-width', b.role === 'YOU' ? 3.4 : (sel === b.label ? 3 : 1.7));
+    pl.setAttribute('opacity', dim ? 0.16 : (b.partial ? 0.7 : 0.95));
+    pl.setAttribute('stroke-linejoin', 'round'); pl.setAttribute('stroke-linecap', 'round'); svg.appendChild(pl);
+    const last = seg[seg.length - 1];
+    if (last) { const [x, y] = proj(last[1], last[2]); const c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', b.role === 'YOU' ? 5 : 4);
+      c.setAttribute('fill', b.color); c.setAttribute('opacity', dim ? 0.2 : 1);
+      c.setAttribute('stroke', '#0c1a2a'); c.setAttribute('stroke-width', 1); svg.appendChild(c); }
+  }
+}
+function cardHTML(b) {
+  return `<div class="card ${sel && sel !== b.label ? 'dim' : ''}" data-b="${b.label}" style="border-left-color:${b.color}">`
+    + `<span class="tag ${b.role}">${b.role}</span> <span style="font-size:11px;color:#8aa0b4">${b.band} · ${b.corr}</span>`
+    + `<div class="n" style="color:${b.color}">${b.disp}</div><div class="b">${b.type} · ${b.skipper}</div>`
+    + `<div class="m">${b.rec || ''}${b.rec ? '<br>' : ''}${b.dist_nm} nm sailed${b.partial ? ' · <b style="color:#e0862a">partial track</b>' : ''}</div></div>`;
+}
+function groups() {
+  const by = (r) => DATA.boats.filter(b => b.role === r);
+  $('#groups').innerHTML = `<div class="grp">You</div><div class="cards">${by('YOU').map(cardHTML).join('')}</div>`
+    + `<div class="grp">Follow — pace references</div><div class="cards">${by('FOLLOW').map(cardHTML).join('')}</div>`
+    + `<div class="grp">Benchmarks — the boats to beat</div><div class="cards">${by('BENCHMARK').map(cardHTML).join('')}</div>`;
+  document.querySelectorAll('#groups .card').forEach(c => c.onclick = () => { sel = sel === c.dataset.b ? null : c.dataset.b; render(); });
+}
+function stats() {
+  const ljS = LJ.stats;
+  const rows = DATA.boats.map(b => {
+    const s = b.stats;
+    if (!s) return `<tr><td class="l" style="color:${b.color}">${b.disp}</td><td colspan="5" style="text-align:left;color:#6f889e">${b.partial ? 'partial track — no trimmed speed' : '—'}</td></tr>`;
+    const vs = ljS ? ((s.trimSOG_kn / ljS.trimSOG_kn - 1) * 100) : null;
+    const vsCol = b.role === 'YOU' ? '#eaf1f7' : (vs > 0 ? '#5bd88a' : '#ff7a6b');
+    const upS = s.outboundPctNorth == null ? '–' : `${100 - s.outboundPctNorth}% S`;
+    const back = s.returnPctNorth == null ? '–' : `${s.returnPctNorth}% N`;
+    return `<tr><td class="l" style="color:${b.color};font-weight:700">${b.disp}</td>`
+      + `<td>${s.trimSOG_kn.toFixed(2)} kn</td>`
+      + `<td style="color:${vsCol}">${b.role === 'YOU' ? '—' : (vs >= 0 ? '+' : '') + vs.toFixed(0) + '%'}</td>`
+      + `<td>${s.trimDist_nm ?? b.dist_nm} nm</td><td>${upS}</td><td>${back}</td></tr>`;
+  }).join('');
+  $('#stats').innerHTML = `<thead><tr><th class="l">Boat</th><th>Trimmed SOG</th><th>vs LJ</th><th>Distance</th><th>Up-lake</th><th>Return</th></tr></thead><tbody>${rows}</tbody>`;
+}
+const scrub = $('#scrub'), tlabel = $('#tlabel');
+function render() { const f = +scrub.value / 1000; draw(f); groups(); stats(); tlabel.textContent = f >= 1 ? 'full' : Math.round(f * 100) + '%'; }
+scrub.oninput = render;
+let playing = false, timer = null;
+$('#play').onclick = function () { playing = !playing; this.textContent = playing ? '❚❚ Pause' : '► Play';
+  if (playing) { if (+scrub.value >= 1000) scrub.value = 0; timer = setInterval(() => { scrub.value = Math.min(1000, +scrub.value + 8); render(); if (+scrub.value >= 1000) { playing = false; $('#play').textContent = '► Play'; clearInterval(timer); } }, 40); } else clearInterval(timer); };
+$('#foot').innerHTML = `Routes = actual GPS tracks (${DATA.source}). Little Johnka in <b style="color:#ff5a3c">orange</b>; click a card to isolate a boat. <b>Trimmed SOG</b> = distance over the race window (fleet start estimate + official elapsed), the honest boat-for-boat speed. <b>Up-lake / Return</b> = which shore (S = Savoie/French, N = Vaud/Swiss) relative to the lake centerline. ${DATA.note || ''}`;
+render();
+</script>
+</body>
+</html>

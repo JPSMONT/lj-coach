@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<!-- SOURCE TEMPLATE for debrief.html. Do NOT edit debrief.html by hand.
+     Edit this file + data/bol-dor-2026-debrief.json (regenerated from the real track + AROME wind),
+     then: node ui/build.mjs -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Debrief — Bol d'Or 2026</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0f1c2b;color:#eaf1f7}
+  .wrap{max-width:940px;margin:0 auto;padding:18px}
+  h1{font-size:19px;margin:0 0 2px}
+  .sub{color:#8aa0b4;font-size:12.5px;margin-bottom:12px;line-height:1.45}
+  .grp{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#8aa0b4;margin:18px 2px 7px;font-weight:700}
+  .banner{background:#2a2113;border:1px solid #5a4a1e;border-left:4px solid #e0a92a;border-radius:10px;padding:11px 13px;font-size:13px;line-height:1.5;color:#f3e2bf}
+  .banner b{color:#ffd777}
+  .map{background:#12283f;border:1px solid #23384e;border-radius:12px;padding:6px}
+  svg{display:block;width:100%;height:auto;background:#0c1a2a;border-radius:8px}
+  table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+  th,td{padding:5px 8px;font-size:12px;border-bottom:1px solid #22364b;text-align:right}
+  th{color:#8aa0b4;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px}
+  td.l,th.l{text-align:left}
+  /* weakness matrix */
+  .mx{border-collapse:separate;border-spacing:4px}
+  .mx th{font-size:10px}
+  .mx td{border:0;border-radius:7px;text-align:center;padding:7px 6px;min-width:52px;font-weight:800;color:#0c1a2a}
+  .mx td .n{display:block;font-size:9px;font-weight:600;opacity:.72;margin-top:1px}
+  .mx td.na{background:#132437;color:#42576d;font-weight:600}
+  .legc{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:middle;margin-right:5px}
+  .bar{height:9px;border-radius:5px;background:#1b3049;overflow:hidden}
+  .bar>i{display:block;height:100%}
+  .foot{color:#6f889e;font-size:11px;margin-top:16px;line-height:1.6}
+  .foot li{margin:3px 0}
+  .pill{display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:9px;background:#16273a;border:1px solid #2c435a;color:#cfe0ef}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title">Debrief</h1>
+  <div class="sub" id="intro"></div>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="grp">Route — coloured by leg</div>
+  <div class="map"><svg id="svg" viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg"></svg></div>
+  <div id="legkey" style="font-size:11.5px;color:#9fb4c8;margin:8px 2px;line-height:1.7"></div>
+
+  <div class="grp">Speed vs polar — where were we slow? (wind band × point of sail)</div>
+  <div class="sub" style="margin:-2px 0 8px">Each cell = Little Johnka's boatspeed as a % of her polar target, VMG-matched upwind/down. Green ≥100%, amber 90&ndash;100%, red below. The <b>4&ndash;6 kt</b> row (starred, faded) is scored against a <b>modelled</b> light-air polar — low confidence. 6 kt+ rows are the certificate.</div>
+  <div style="overflow-x:auto"><table class="mx" id="matrix"></table></div>
+
+  <div class="grp">By point of sail — certified wind (6&ndash;8 kt)</div>
+  <div style="overflow-x:auto"><table id="pos"></table></div>
+
+  <div class="grp">By point of sail — modelled light air (4&ndash;6 kt) <span style="color:#e0a92a">· low confidence</span></div>
+  <div class="sub" style="margin:-2px 0 8px">Scored against the modelled polar, on model wind and SOG. Read the shape, not the number — e.g. an over-100% upwind cell here is wind-model/SOG error, not real speed. This is what the boat's own log will replace first.</div>
+  <div style="overflow-x:auto"><table id="posmod"></table></div>
+
+  <div class="grp">Leg splits</div>
+  <div style="overflow-x:auto"><table id="legs"></table></div>
+
+  <div class="grp">Instrument-log mode — heel/trim cause-finder <span id="iltag" style="color:#e0a92a"></span></div>
+  <div class="banner" id="ilbanner" style="background:#132a1f;border-color:#1e5a3e;border-left-color:#2aa06a;color:#bfe7d4"></div>
+  <div class="sub" style="margin:8px 0">This is what the Debrief becomes on the boat's own data: measured STW and true wind, so nothing is model or SOG. Because the DST810 also gives <b>heel and trim</b>, each under-polar cell can be read against how the boat was sitting — the test that separates a trim / crew-weight problem from a helming one.</div>
+  <div style="overflow-x:auto"><table id="illog"></table></div>
+
+  <div class="grp">How to read this</div>
+  <ul class="foot" id="caveats"></ul>
+</div>
+
+<script type="module">
+//__ENGINE__//
+//__DATA__//
+
+const $=s=>document.querySelector(s);
+const NS='http://www.w3.org/2000/svg';
+const LEGCOL=['#ff5a3c','#3ca7ff','#f1c40f']; // up-lake / grand-lac return / petit lac
+const LEGNAME=DATA.legs.map(l=>l.name);
+
+$('#title').textContent = DATA.event;
+$('#intro').innerHTML = `Wind: ${DATA.windSource}. This is the debrief spine — a speed-vs-polar read plus leg splits — built from the actual GPS track overlaid with the modelled race-day wind. <span class="pill">indicative</span> until the boat's own instrument log replaces the model.`;
+
+// honesty banner — three tiers of confidence
+const op=DATA.offPolar, ti=DATA.tiers;
+$('#banner').innerHTML = `This race was extraordinarily light. <b>${op.offPct}% was below ${op.modelFloor} kt</b> — off-polar, unscoreable at any confidence. A further <b>${op.modelledPct}% (${op.modelFloor}&ndash;${op.certFloor} kt)</b> is scored against a <b>modelled</b> light-air polar — shown faded/starred, low confidence. Only <b>${ti.certified} fixes</b> sit in the certified ${op.certFloor} kt+ band: that is the trustworthy signal. Certified overall ${DATA.overallPct}% of polar; modelled 4&ndash;6 kt overall ${DATA.overallModelledPct}%.`;
+
+// ---- route map, coloured by leg ----
+(function(){
+  const B=DATA.bounds, midLat=(B.minLat+B.maxLat)/2, kx=Math.cos(midLat*Math.PI/180);
+  const W=(B.maxLon-B.minLon)*kx, H=(B.maxLat-B.minLat), VW=900, VH=Math.round(VW*H/W), PAD=18;
+  const svg=$('#svg'); svg.setAttribute('viewBox',`0 0 ${VW} ${VH}`);
+  const proj=(lon,lat)=>[(lon-B.minLon)*kx/W*(VW-2*PAD)+PAD,(B.maxLat-lat)/H*(VH-2*PAD)+PAD];
+  // split track into per-leg polylines
+  let cur=null,curLeg=-1;
+  for(const [lon,lat,leg] of DATA.track){
+    if(leg!==curLeg){ cur=document.createElementNS(NS,'polyline'); cur.setAttribute('fill','none');
+      cur.setAttribute('stroke',LEGCOL[leg]); cur.setAttribute('stroke-width',3); cur.setAttribute('stroke-linejoin','round');
+      cur.setAttribute('stroke-linecap','round'); cur.setAttribute('points',''); svg.appendChild(cur); curLeg=leg; }
+    const [x,y]=proj(lon,lat); cur.setAttribute('points',(cur.getAttribute('points')+` ${x},${y}`).trim());
+  }
+  // mark + start/finish dots
+  const mk=(lon,lat,r,fill,txt)=>{const c=document.createElementNS(NS,'circle');const[x,y]=proj(lon,lat);
+    c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',r);c.setAttribute('fill',fill);
+    c.setAttribute('stroke','#0c1a2a');c.setAttribute('stroke-width',1.5);svg.appendChild(c);
+    if(txt){const t=document.createElementNS(NS,'text');t.setAttribute('x',x+8);t.setAttribute('y',y+4);
+      t.setAttribute('fill','#cfe0ef');t.setAttribute('font-size','13');t.textContent=txt;svg.appendChild(t);}};
+  const s=DATA.track[0], f=DATA.track[DATA.track.length-1];
+  mk(s[0],s[1],5,'#eaf1f7','Start/Finish');
+  mk(DATA.mark.lon,DATA.mark.lat,6,'#e0a92a',`Le Bouveret · rounded +${DATA.mark.at_h}h`);
+  $('#legkey').innerHTML = LEGNAME.map((n,i)=>`<span class="legc" style="background:${LEGCOL[i]}"></span>${n} <span style="color:#6f889e">(${DATA.legs[i].hint})</span>`).join('&nbsp;&nbsp; ');
+})();
+
+// ---- weakness matrix (tier-aware: 4–6 kt row is modelled → faded + hatched + star) ----
+(function(){
+  const col=pct=> pct>=100?'#4fb477': pct>=95?'#8fbf63': pct>=90?'#e0c34a': pct>=85?'#e09b3a':'#d9634a';
+  const head='<tr><th class="l">Wind</th>'+DATA.posOrder.map(p=>`<th>${p==='beat'?'Beat':p==='run'?'Run':p+'°'}</th>`).join('')+'</tr>';
+  const rows=DATA.bandOrder.map((band,bi)=>{
+    const cells=DATA.posOrder.map((pos,pi)=>{ const c=DATA.matrix[bi][pi];
+      if(!c) return `<td class="na">·</td>`;
+      const mod=c.tier==='modelled';
+      const st=`background:${col(c.pct)}`+(mod?';opacity:.5;background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.22) 0 3px,transparent 3px 6px)':'');
+      return `<td style="${st}">${c.pct}%${mod?'*':''}<span class="n">n=${c.n}</span></td>`; }).join('');
+    const lbl=band==='4–6'?'4–6 *':band;
+    return `<tr><th class="l">${lbl} kt</th>${cells}</tr>`;
+  }).join('');
+  $('#matrix').innerHTML=head+rows;
+})();
+
+// ---- point of sail bars (shared renderer: certified + modelled) ----
+function renderPos(sel, list, faded){
+  const order={beat:0,'52':1,'60':2,'75':3,'90':4,'110':5,'135':6,'150':7,run:8};
+  const rows=[...list].sort((a,b)=>(order[a.pos]??9)-(order[b.pos]??9)).map(p=>{
+    const col=p.avgPct>=100?'#4fb477':p.avgPct>=90?'#e0c34a':'#d9634a';
+    const w=Math.max(4,Math.min(100,p.avgPct));
+    const note=p.n<8?'thin sample':(p.avgPct>=110?'⚑ likely artifact':(p.avgPct<90?'⚠ under polar':''));
+    return `<tr style="${faded?'opacity:.72':''}"><td class="l" style="font-weight:700">${p.pos==='beat'?'Beat (upwind)':p.pos==='run'?'Run (downwind)':p.pos+'°'}</td>`
+      +`<td style="width:46%"><div class="bar"><i style="width:${w}%;background:${col}${faded?';background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.22) 0 3px,transparent 3px 6px)':''}"></i></div></td>`
+      +`<td style="color:${col};font-weight:800">${p.avgPct}%${faded?'*':''}</td><td>${p.n}</td>`
+      +`<td class="l" style="color:#8aa0b4">${note}</td></tr>`;
+  }).join('');
+  $(sel).innerHTML=`<thead><tr><th class="l">Point of sail</th><th class="l">% of polar</th><th>%</th><th>n</th><th class="l"></th></tr></thead><tbody>${rows}</tbody>`;
+}
+renderPos('#pos', DATA.byPoint, false);
+renderPos('#posmod', DATA.byPointModelled, true);
+
+// ---- leg splits (certified / modelled 4–6 / off-polar) ----
+(function(){
+  const fmt=(pct,n,artifact)=> pct==null?'<span style="color:#6f889e">—</span>'
+    :`<span style="font-weight:800;color:${pct>=100?'#5bd88a':pct>=90?'#e0c34a':'#ff7a6b'}">${pct}%${artifact?'*':''}</span> <span style="color:#6f889e">(n=${n})</span>`;
+  const rows=DATA.legs.map((l,i)=>{
+    return `<tr><td class="l"><span class="legc" style="background:${LEGCOL[i]}"></span><b>${l.name}</b></td>`
+      +`<td>${l.dur_h} h</td><td>${l.dist_nm} nm</td><td>${l.meanSOG} kn</td>`
+      +`<td>${fmt(l.certPct,l.certN,false)}</td><td>${fmt(l.modPct,l.modN,true)}</td><td>${l.offPct}%</td></tr>`;
+  }).join('');
+  $('#legs').innerHTML=`<thead><tr><th class="l">Leg</th><th>Time</th><th>Distance</th><th>Mean SOG</th><th>Certified 6kt+</th><th>Modelled 4–6</th><th>Off-polar</th></tr></thead><tbody>${rows}</tbody>`;
+})();
+
+// ---- instrument-log mode (heel/trim cause-finder) ----
+(function(){
+  const il=DATA.instrumentLog; if(!il){ return; }
+  $('#iltag').textContent = il.simulated ? '· SIMULATED demo' : '· live log';
+  $('#ilbanner').innerHTML = `<b>${il.simulated?'Simulated demo':'Instrument log'}.</b> ${il.note}`;
+  const posOrder={beat:0,'52':1,'60':2,'75':3,'90':4,'110':5,'120':6,'135':7,'150':8,run:9};
+  const read=(pct,heel)=> pct>=98 ? '<span style="color:#5bd88a">on pace</span>'
+    : (heel!=null&&heel>=20) ? '<span style="color:#e0862a">⚠ over-heeled → check trim &amp; crew weight</span>'
+    : '<span style="color:#e0c34a">normal heel → look at helming / technique</span>';
+  const col=pct=> pct>=100?'#4fb477':pct>=90?'#e0c34a':'#d9634a';
+  const rows=[...il.cells].sort((a,b)=>(posOrder[a.pos]??9)-(posOrder[b.pos]??9)).map(c=>{
+    const label=c.pos==='beat'?'Beat':c.pos==='run'?'Run':c.pos+'°';
+    return `<tr><td class="l" style="font-weight:700">${label}</td><td>${c.band} kt</td>`
+      +`<td style="color:${col(c.avgPct)};font-weight:800">${c.avgPct}%</td>`
+      +`<td>${c.avgHeel==null?'–':c.avgHeel+'°'}</td><td>${c.avgTrim==null?'–':c.avgTrim+'°'}</td>`
+      +`<td>${c.n}</td><td class="l">${read(c.avgPct,c.avgHeel)}</td></tr>`;
+  }).join('');
+  $('#illog').innerHTML=`<thead><tr><th class="l">Point of sail</th><th>Wind</th><th>% polar</th><th>Heel</th><th>Trim</th><th>n</th><th class="l">Likely cause if slow</th></tr></thead><tbody>${rows}</tbody>`;
+})();
+
+$('#caveats').innerHTML=DATA.caveats.map(c=>`<li>${c}</li>`).join('');
+</script>
+</body>
+</html>

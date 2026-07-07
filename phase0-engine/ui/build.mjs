@@ -1,12 +1,11 @@
-// build.mjs — generate ui/compare.html from the canonical engine + data.
+// build.mjs — generate the single-file UI pages from the canonical engine + data.
 //
-// Why: the Compare view must run the SAME corrected-time engine the acceptance tests
-// verify — never a hand-maintained copy that can silently drift. This inlines
-// ../src/ratings.mjs + ../src/engine.mjs + ../data/boats.json into ui/template.html
-// so compare.html is a single self-contained file that is nonetheless generated from
-// (and provably identical to) the audited source.
+// Why: every UI must run the SAME audited code the tests verify — never a hand-maintained
+// copy that can silently drift. This inlines the relevant src/*.mjs modules + data/boats.json
+// into each ui/*.template.html, producing self-contained pages that are provably identical to
+// the source. compare.html and cockpit.html are GENERATED output — do not hand-edit them.
 //
-// Run:  node ui/build.mjs      (from phase0-engine/)   → writes ui/compare.html
+// Run:  node ui/build.mjs      (from phase0-engine/)
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -16,37 +15,58 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const read = (p) => readFileSync(join(root, p), 'utf8');
 
-// Strip module syntax so the two files can live as plain top-level declarations
-// inside one <script type="module">. We remove `export ` prefixes, the relative
-// import of ratings, and the re-export footer. No logic is altered.
+// Strip module syntax so several modules can live as plain top-level declarations inside one
+// <script type="module">: drop relative imports, `export {..}` re-export footers, and `export `
+// prefixes. No logic is altered. (Modules must not share top-level identifier names — enforced
+// by convention; the load smoke-test catches any clash.)
 function stripModule(src) {
   return src
-    .replace(/^\s*import\s+\{[^}]*\}\s+from\s+['"]\.\/ratings\.mjs['"];\s*$/m, '')
+    .replace(/^\s*import\s+\{[^}]*\}\s+from\s+['"]\.\/[^'"]+['"];\s*$/mg, '')
     .replace(/^\s*export\s+\{[^}]*\};\s*$/mg, '')
     .replace(/^export\s+/mg, '');
 }
+const bundle = (names) =>
+  names.map((n) => `/* ---- inlined from src/${n}.mjs ---- */\n${stripModule(read(`src/${n}.mjs`))}`).join('\n');
 
-const ratings  = stripModule(read('src/ratings.mjs'));
-const engine   = stripModule(read('src/engine.mjs'));
-const courseIo = stripModule(read('src/course-io.mjs'));
-const engineBlock =
-  `/* ---- inlined from src/ratings.mjs ---- */\n${ratings}\n` +
-  `/* ---- inlined from src/engine.mjs ---- */\n${engine}\n` +
-  `/* ---- inlined from src/course-io.mjs ---- */\n${courseIo}`;
+const dataBlock = (path) => `/* ---- inlined from ${path} ---- */\nconst DATA = ${read(path).trim()};`;
+const today = new Date().toISOString().slice(0, 10);
 
-const data = read('data/boats.json').trim();
-const dataBlock = `/* ---- inlined from data/boats.json ---- */\nconst DATA = ${data};`;
+const TARGETS = [
+  { template: 'ui/template.html',         out: 'ui/compare.html', modules: ['ratings', 'engine', 'course-io'], data: 'data/boats.json' },
+  { template: 'ui/cockpit.template.html', out: 'ui/cockpit.html', modules: ['ratings', 'engine', 'n2k-decode', 'n2k-sim', 'live-state', 'live-race'], data: 'data/boats.json' },
+  { template: 'ui/rivals.template.html',  out: 'ui/rivals.html',  modules: [], data: 'data/bol-dor-2026-rivals.json' },
+  { template: 'ui/debrief.template.html', out: 'ui/debrief.html', modules: [], data: 'data/bol-dor-2026-debrief.json' },
+  { template: 'ui/trimlab.template.html', out: 'ui/trimlab.html', modules: [], data: 'data/trimlab-demo.json' },
+];
 
-let out = read('ui/template.html')
-  .replace('//__ENGINE__//', () => engineBlock)
-  .replace('//__DATA__//', () => dataBlock);
+// One app, four pages: a shared sticky nav is injected into every generated page so they
+// cross-link and feel like a single app, while each page stays self-contained (opens offline,
+// keeps its own audited engine inline). Order matches TARGETS.
+const NAV_TABS = [['compare.html', 'Compare'], ['cockpit.html', 'Cockpit'], ['rivals.html', 'Rivals'], ['debrief.html', 'Debrief'], ['trimlab.html', 'Trim Lab']];
+const NAV_CSS = `<style>/* injected by build.mjs — shared nav */
+.ljnav{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:2px;padding:8px 14px;background:#0b1622;border-bottom:1px solid #23384e;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+.ljnav .brand{font-weight:800;font-size:13px;color:#ff5a3c;margin-right:12px;letter-spacing:.3px;white-space:nowrap}
+.ljnav a{color:#9fb4c8;text-decoration:none;font-size:13px;font-weight:700;padding:6px 12px;border-radius:8px}
+.ljnav a:hover{background:#16273a;color:#eaf1f7}
+.ljnav a.active{background:#16273a;color:#eaf1f7;box-shadow:inset 0 -2px 0 #ff5a3c}
+@media(max-width:520px){.ljnav .brand{display:none}.ljnav a{padding:6px 9px;font-size:12px}}
+</style>`;
+const navBar = (active) => `<nav class="ljnav"><span class="brand">⛵ LJ Coach</span>`
+  + NAV_TABS.map(([h, l]) => `<a href="${h}"${h === active ? ' class="active"' : ''}>${l}</a>`).join('') + `</nav>`;
 
-if (out.includes('//__ENGINE__//') || out.includes('//__DATA__//')) {
-  throw new Error('build: a placeholder was not replaced — check ui/template.html markers.');
+for (const t of TARGETS) {
+  let out = read(t.template)
+    .replace('//__ENGINE__//', () => bundle(t.modules))
+    .replace('//__DATA__//', () => dataBlock(t.data));
+  if (out.includes('//__ENGINE__//') || out.includes('//__DATA__//')) {
+    throw new Error(`build: a placeholder was not replaced in ${t.template}`);
+  }
+  const banner = `<!-- GENERATED by ui/build.mjs on ${today} — DO NOT EDIT.\n     Edit ${t.template} + src/*.mjs + data/boats.json, then: node ui/build.mjs -->\n`;
+  out = out.replace(/^<!DOCTYPE html>\n/, `<!DOCTYPE html>\n${banner}`);
+  // inject shared nav (CSS in <head>, bar right after <body>) — active tab = this page's filename
+  const active = t.out.split('/').pop();
+  if (!out.includes('</head>') || !out.includes('<body>')) throw new Error(`build: no </head>/<body> to inject nav in ${t.template}`);
+  out = out.replace('</head>', `${NAV_CSS}\n</head>`).replace('<body>', `<body>\n${navBar(active)}`);
+  writeFileSync(join(root, t.out), out);
+  console.log(`${t.out} written (${out.length} bytes) — modules: ${t.modules.join(', ')}`);
 }
-
-const banner = `<!-- GENERATED by ui/build.mjs on ${new Date().toISOString().slice(0,10)} — DO NOT EDIT.\n     Edit ui/template.html + src/*.mjs + data/boats.json, then: node ui/build.mjs -->\n`;
-out = out.replace(/^<!DOCTYPE html>\n/, `<!DOCTYPE html>\n${banner}`);
-
-writeFileSync(join(root, 'ui/compare.html'), out);
-console.log(`ui/compare.html written (${out.length} bytes) — engine + data inlined from src/.`);

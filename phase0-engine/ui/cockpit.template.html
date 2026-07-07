@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<!-- SOURCE TEMPLATE for cockpit.html. Do NOT open this directly and do NOT edit cockpit.html by hand.
+     Edit this file + ../src/*.mjs + ../data/boats.json, then regenerate:  node ui/build.mjs -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Little Johnka — Live Cockpit</title>
+<style>
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:#0f1c2b; color:#eaf1f7; }
+  .wrap { max-width:940px; margin:0 auto; padding:18px; }
+  h1 { font-size:19px; margin:0 0 2px; }
+  .sub { color:#8aa0b4; font-size:12.5px; margin-bottom:14px; line-height:1.45; }
+  .badge { display:inline-block; font-size:10px; font-weight:800; letter-spacing:.5px; padding:2px 7px; border-radius:10px; background:#e0862a; color:#1a1000; vertical-align:middle; margin-left:6px; }
+  .bar { display:flex; flex-wrap:wrap; gap:14px 20px; align-items:center; margin-bottom:14px; }
+  .lbl { font-size:10.5px; color:#8aa0b4; margin:0 0 5px; text-transform:uppercase; letter-spacing:.5px; }
+  .seg { display:inline-flex; border:1px solid #2c435a; border-radius:9px; overflow:hidden; }
+  .seg button { border:0; background:#16273a; padding:7px 12px; font-size:12.5px; font-weight:600; color:#9fb4c8; cursor:pointer; }
+  .seg button.on { background:#2E6BA8; color:#fff; }
+  .pbtn { border:1px solid #2c435a; background:#16273a; border-radius:9px; padding:7px 14px; font-size:13px; font-weight:700; color:#eaf1f7; cursor:pointer; }
+  .gauges { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  @media (max-width:720px){ .gauges { grid-template-columns:repeat(2,1fr); } }
+  .g { background:#16273a; border:1px solid #23384e; border-radius:12px; padding:11px 13px; }
+  .g.hi { border-color:#e0862a; box-shadow: inset 0 0 0 1px #e0862a55; }
+  .g .k { font-size:10.5px; color:#8aa0b4; text-transform:uppercase; letter-spacing:.5px; }
+  .g .v { font-size:30px; font-weight:800; line-height:1.05; font-variant-numeric:tabular-nums; margin-top:2px; }
+  .g .v small { font-size:14px; font-weight:700; color:#9fb4c8; }
+  .g .s { font-size:11px; color:#9fb4c8; margin-top:3px; }
+  .g.stale { opacity:.4; }
+  .g.stale .v::after { content:' ·stale'; font-size:11px; color:#e0862a; }
+  .good { color:#5bd88a; } .warn { color:#f0c53d; } .bad { color:#ff7a6b; }
+  .panel { background:#16273a; border:1px solid #23384e; border-radius:12px; padding:13px; margin-top:14px; }
+  .fh { font-size:12.5px; color:#cfe0ef; margin-bottom:10px; }
+  .fh b { color:#fff; }
+  .row { display:flex; align-items:center; gap:10px; padding:5px 0; border-top:1px solid #22364b; }
+  .row:first-child { border-top:0; }
+  .nm { width:120px; font-weight:700; font-size:13px; white-space:nowrap; }
+  .tag { font-size:8.5px; font-weight:700; padding:1px 5px; border-radius:9px; margin-left:2px; }
+  .tag.spi { background:#3a2c50; color:#c9a3f0; } .tag.gen { background:#1f3f39; color:#7fd8c4; }
+  .track { position:relative; flex:1; height:16px; background:#0f1c2b; border-radius:8px; overflow:hidden; }
+  .track .mid { position:absolute; left:50%; top:0; bottom:0; width:1px; background:#3a5170; }
+  .track .fillp { position:absolute; left:50%; top:2px; bottom:2px; background:#1a9850; border-radius:4px; }
+  .track .filln { position:absolute; right:50%; top:2px; bottom:2px; background:#d73027; border-radius:4px; }
+  .mval { width:60px; text-align:right; font-weight:800; font-size:13px; font-variant-numeric:tabular-nums; }
+  .foot { color:#6f889e; font-size:11px; margin-top:12px; line-height:1.55; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Little Johnka · Live Cockpit <span class="badge">SIMULATOR</span></h1>
+  <div class="sub">Live boat state and corrected-time position vs the fleet, driven end-to-end through the real pipeline — the simulator emits YDWG‑02 RAW frames, which are decoded, reduced to boat state, and scored by the same audited engine. When the gateway is installed, only the frame source changes.</div>
+
+  <div class="bar">
+    <div><div class="lbl">Rating system</div>
+      <div class="seg" id="sys">
+        <button data-sys="ORC" class="on">ORC</button>
+        <button data-sys="SRS">SRS</button>
+        <button data-sys="YARDSTICK">Yardstick</button>
+      </div>
+    </div>
+    <div><div class="lbl">Feed</div><button class="pbtn" id="play">❚❚ Pause</button></div>
+    <div><div class="lbl">Leg</div><div id="posind" style="font-weight:700;font-size:13px">—</div></div>
+  </div>
+
+  <div class="gauges" id="gauges"></div>
+
+  <div class="panel">
+    <div class="fh" id="fh"></div>
+    <div id="fleet"></div>
+  </div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script type="module">
+//__ENGINE__//
+//__DATA__//
+
+// ---- fleet + boat handles ----
+const BY = Object.fromEntries(DATA.boats.filter(b => b.polar).map(b => [b.id, b]));
+const LJ = BY.lj, GRID = DATA._meta.tws_grid, REG = DATA._meta.sail_regime_LJ;
+const RIVALS = ['esse850','melges24','j70','este24','surprise','ufo22','blu26','melges32'].map(id => BY[id]);
+const $ = (s) => document.querySelector(s);
+const st = { sys:'ORC', play:true, idx:0 };
+let live = initState();
+
+// ---- demo scenario: script true wind + target-relative boatspeed, then synthesise the
+// APPARENT wind the sensor would report (inverse of the app's true-wind derivation), so the
+// cockpit re-derives sensible true wind and % of polar. Pure demo data, not shipped logic. ----
+function apparentFromTrue(tws, twa, bs) {
+  const a = Math.abs(twa) * Math.PI / 180, side = twa < 0 ? -1 : 1;
+  const aws = Math.sqrt(tws*tws + bs*bs + 2*tws*bs*Math.cos(a));
+  const awa = Math.atan2(tws*Math.sin(a), tws*Math.cos(a) + bs) * 180 / Math.PI;
+  return { aws_kn: aws, awa_deg: side * awa };
+}
+function makeSail() {
+  const legs = [
+    ['Upwind, light',   42,  8, 0.98, 14, -2, 5],
+    ['Upwind, building',40, 12, 1.00, 21, -2, 5],
+    ['Beam reach',      90, 12, 1.00, 15,  0, 4],
+    ['Broad reach',    135, 11, 0.97, 11,  1, 4],
+    ['Run',            170, 10, 0.95,  6,  1, 5],
+  ];
+  const out = []; let t = 0, lat = 47.100, lon = 8.480;
+  for (const [label, twa, tws, f, heel, trim, n] of legs) {
+    for (let i = 0; i < n; i++) {
+      const pos = pointOfSail(twa);
+      const targetMetric = polarSpeed(LJ, pos, tws, GRID) || 5;   // VMG for beat/run, boatspeed for reach
+      // convert a target VMG back to a target BOATSPEED so STW is realistic (boatspeed > VMG upwind)
+      const targetBoatspeed = (pos === 'beat' || pos === 'run')
+        ? targetMetric / Math.abs(Math.cos(twa * Math.PI / 180)) : targetMetric;
+      const stw = targetBoatspeed * f * (1 + Math.sin(t) * 0.008);
+      const aw = apparentFromTrue(tws, twa, stw);
+      lat += 0.0006; lon += 0.0004;
+      out.push({ t, label, stw_kn: stw, heel_deg: heel + Math.sin(t) * 1.1, trim_deg: trim,
+        aws_kn: aw.aws_kn, awa_deg: aw.awa_deg, depth_m: 34 - (t % 9), watertemp_c: 19.4,
+        cog_deg: twa < 90 ? 40 : 190, sog_kn: stw * 0.98, heading_deg: twa < 90 ? 45 : 185, lat, lon });
+      t++;
+    }
+  }
+  return out;
+}
+const SAIL = makeSail();
+
+// ---- render ----
+const sysName = () => st.sys === 'ORC' ? 'ORC (GPH)' : st.sys === 'SRS' ? 'SRS (TCF)' : 'Yardstick';
+const posLabel = (k) => k === 'beat' ? 'Beat · upwind VMG' : k === 'run' ? 'Run · downwind VMG' : `${k}° reach`;
+const dtag = (b) => b.downwind_sail === 'symmetric' ? '<span class="tag spi">spi</span>' : '<span class="tag gen">gen</span>';
+const bg = (v) => v>=6?'#1a9850':v>=2?'#66bd63':v>=-2?'#e0c341':v>=-6?'#f46d43':'#d73027';
+const fx = (v, n=1) => (v==null ? '–' : v.toFixed(n));
+
+function gauge(k, v, unit, s, cls='', hi=false, stale=false) {
+  return `<div class="g ${hi?'hi':''} ${stale?'stale':''}"><div class="k">${k}</div>`
+    + `<div class="v ${cls}">${v}${unit?`<small> ${unit}</small>`:''}</div>`
+    + `<div class="s">${s||''}</div></div>`;
+}
+function render() {
+  const now = Date.now();
+  const tw = trueWindOf(live);
+  const pos = tw ? pointOfSail(tw.twa_deg) : null;
+  const tws = tw ? tw.tws_kn : null;
+  const target = (pos && tws != null) ? polarSpeed(LJ, pos, tws, GRID) : null;   // VMG (beat/run) or boatspeed (reach)
+  const ljMetric = (tw && live.stw_kn != null) ? measuredSpeed(live.stw_kn, tw.twa_deg, pos) : null; // matched metric
+  const isVmg = pos === 'beat' || pos === 'run';
+  const pct = pctOfTarget(ljMetric, target);
+  const pctCls = pct == null ? '' : pct >= 99 ? 'good' : pct >= 95 ? 'warn' : 'bad';
+  const windStale = isStale(live, 'aws_kn', now);
+
+  $('#posind').textContent = SAIL[(st.idx + SAIL.length - 1) % SAIL.length]?.label ?? '—';
+
+  $('#gauges').innerHTML = [
+    gauge('Boatspeed (STW)', fx(live.stw_kn, 2), 'kn', `over ground ${fx(live.sog_kn,1)} kn`),
+    gauge(isVmg ? 'Polar % (VMG)' : 'Polar % (speed)', pct==null?'–':pct.toFixed(0), pct==null?'':'%',
+      target != null ? `target ${isVmg?'VMG ':''}${fx(target,2)} kn` : 'awaiting wind', pctCls, false, windStale),
+    gauge('Heel', fx(live.heel_deg, 0), '°', 'roll — righting vs power'),
+    gauge('Trim', fx(live.trim_deg, 0), '°', 'fore/aft — light-air lever', '', true),
+    gauge('True wind', fx(tws, 1), 'kt', tw ? `${posLabel(pos)}` : 'deriving…', '', false, windStale),
+    gauge('TWA', tw ? fx(Math.abs(tw.twa_deg), 0) : '–', '°', tw ? `${tw.twa_deg<0?'port':'stbd'} · LJ sail: ${REG[pos]||'–'}` : '', '', false, windStale),
+    gauge('Apparent', `${fx(Math.abs(live.awa_deg),0)}<small>°</small> / ${fx(live.aws_kn,1)}`, 'kt', 'AWA / AWS', '', false, windStale),
+    gauge('Depth', fx(live.depth_m, 1), 'm', `water ${fx(live.watertemp_c,1)}°C · COG ${fx(live.cog_deg,0)}°`),
+  ].join('');
+
+  // live fleet margin using ACTUAL boatspeed
+  const fh = $('#fh'), fleetEl = $('#fleet');
+  if (pos == null || live.stw_kn == null) { fh.innerHTML = 'Waiting for wind + boatspeed…'; fleetEl.innerHTML = ''; return; }
+  fh.innerHTML = `Right now — <b>${posLabel(pos)}</b> · <b>${fx(tws,1)} kt</b> true · sailing <b class="${pctCls}">${pct==null?'–':pct.toFixed(0)}%</b> of polar · ${sysName()}`;
+  const fleet = liveFleet(LJ, RIVALS, { actualStw: ljMetric, angle: pos, tws, systemId: st.sys, grid: GRID });
+  fleetEl.innerHTML = fleet.map((r) => {
+    if (r.status !== 'ok') return `<div class="row"><div class="nm">${r.name} ${dtag(r)}</div><div class="track"><div class="mid"></div></div><div class="mval" style="color:#6f889e">—</div></div>`;
+    const v = r.pct, w = Math.min(50, Math.abs(v) * 3.2);
+    const fillCls = v >= 0 ? 'fillp' : 'filln';
+    return `<div class="row"><div class="nm">${r.name} ${dtag(r)}</div>`
+      + `<div class="track"><div class="mid"></div><div class="${fillCls}" style="width:${w}%;background:${bg(v)}"></div></div>`
+      + `<div class="mval" style="color:${bg(v)}">${v>=0?'+':''}${v.toFixed(1)}%</div></div>`;
+  }).join('');
+  $('#foot').innerHTML = `Green bar = Little Johnka ahead on corrected time, red = behind, at this instant. Uses your <b>measured boatspeed</b> vs each rival's polar (so sailing below target costs margin). <b>?/–</b> = no rating in this system. Bars centred on break-even. Demo feed = a scripted sail through the full decode→state→engine pipeline; on the boat the YDWG‑02 replaces the simulator. Heel & trim are live from the DST810; true wind is derived.`;
+}
+
+// ---- run the pipeline: emit RAW frames → decode → reduce → render ----
+function step() {
+  const snap = SAIL[st.idx];
+  const lines = emitState(snap, { time: fmtTime(snap.t) });
+  const msgs = lines.map(decodeRawLine).filter(Boolean);
+  live = applyStream(live, msgs, Date.now());
+  st.idx = (st.idx + 1) % SAIL.length;
+}
+for (let i = 0; i < 3; i++) step();   // prime the state so nothing is blank
+render();
+let timer = setInterval(() => { if (st.play) { step(); render(); } }, 700);
+
+$('#sys').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; st.sys = b.dataset.sys; [...e.currentTarget.children].forEach(x => x.classList.toggle('on', x === b)); render(); });
+$('#play').addEventListener('click', () => { st.play = !st.play; $('#play').textContent = st.play ? '❚❚ Pause' : '► Play'; });
+</script>
+</body>
+</html>

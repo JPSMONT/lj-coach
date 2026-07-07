@@ -5,7 +5,7 @@
       "lj_polar": "Little Johnka FULL polar from the 2020 ORC certificate '183039' (ORC Ref 03270000KB5, VPP 2020 1.02, GPH 660.2, CDL 7.050) in Drive. This IS the declared certificate basis.",
       "rival_polar": "FULL angle grids (Beat VMG + 52-150° + Run VMG + beat/gybe angles) from each rival's ORC certificate 'Rated boat velocities' table (data.orc.org, fetched 2026-07-05; independently re-fetched + cell-diffed). PUBLIC OD REFERENCE certs (class-representative polar). j70/ufo22/este24/surprise/melges24/esse850/melges32 = 2021 OD (VPP 2021); blu26 = 2020 OD (VPP 2020).",
       "ys": "Swiss-Sailing Yardstickzahlen 2026",
-      "tcf": "Bol d'Or manage2sail 'SRS+ Std. TCF' (Surprise = 1.000 base)"
+      "tcf": "AUTHORITATIVE: official SRS database swissratingsystem.org/app/srs/srs2012.nsf/SrsJauPag.xsp (\"Liste des bateaux jaugés\" — search by type/name/sail-no/region; jauges SRS/solo/duo/High). Go here first for any Swiss boat. Cross-checked against Bol d’Or 2026 official results (Surprise = 1.000 base). Esse 850 standard 1.112 + inboard 1.097 confirmed here."
     },
     "tws_grid": [
       6,
@@ -41,7 +41,8 @@
       "run": "spinnaker"
     },
     "downwind_sail": "Per-boat downwind_sail derived from the cert gybe_angle rows: 'symmetric' = spinnaker that gybes out to ~180° in breeze (lj, surprise, blu26); 'asymmetric' = gennaker that stays hot at ~140-150° (j70, esse850, este24, melges24, melges32, ufo22). LJ's 2020 cert rates a symmetric spinnaker ONLY — the Code 0 in the sail-plan memo is not yet on the certificate.",
-    "TODO": "Cape 31 has no public OD cert (individual US3831). SB20/Lüthi/Toucan/Psaros have ratings only (no ORC polar grid)."
+    "TODO": "Cape 31 has no public OD cert (individual US3831). SB20/Lüthi/Toucan/Psaros have ratings only (no ORC polar grid).",
+    "esse850_variants": "Esse 850 SRS TCF by config, all CONFIRMED vs official Bol d’Or 2026 results: STANDARD 1.112 (esse850, 8 boats, carries ORC OD polar) · INBOARD 1.097 (esse850_inboard, SRS-only, 2 boats). Also seen: 1.156 on SUI 9902 Barkhane = a short-handed (solo/duo) crew modifier on a standard hull, NOT a boat variant (SRS gives reduced-crew entries a higher TCF). Use the matching config on SRS."
   },
   "boats": [
     {
@@ -296,7 +297,7 @@
     },
     {
       "id": "esse850",
-      "name": "Esse 850",
+      "name": "Esse 850 (standard)",
       "rating_basis": "GPH",
       "cert_vintage": "2021",
       "comparability_flag": "core",
@@ -417,7 +418,23 @@
           146.8
         ]
       },
-      "downwind_sail": "asymmetric"
+      "downwind_sail": "asymmetric",
+      "srs_variant": "standard",
+      "srs_note": "SRS TCF 1.112 = standard/non-inboard. CONFIRMED against official Bol d’Or 2026 général results: 8 standard Esse 850 scored at 1.112 (incl. SUI 183 Poisson Garou 2 = 2nd overall, SUI 076 Darnetal/Pertuiset, SUI 140 Storm/Rottet — the last two are app Rivals-tab targets). Verified against the official SRS database (swissratingsystem.org). ORC OD polar basis unchanged."
+    },
+    {
+      "id": "esse850_inboard",
+      "name": "Esse 850 (inboard)",
+      "rating_basis": "SRS",
+      "cert_vintage": null,
+      "comparability_flag": "srs_only",
+      "srs_variant": "inboard",
+      "srs_note": "SRS TCF 1.097 = inboard variant (engine adds weight → lower TCF). CONFIRMED from official Bol d’Or 2026 results: SUI 174 Tanoshii + SUI 16 Cordless. SRS-only (no ORC OD cert → no GPH/polar). Verified against the official SRS database (swissratingsystem.org).",
+      "ratings": {
+        "gph": null,
+        "ys": null,
+        "tcf": 1.097
+      }
     },
     {
       "id": "este24",
