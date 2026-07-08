@@ -96,6 +96,13 @@ $('#banner').innerHTML = `This race was extraordinarily light. <b>${op.offPct}% 
   const W=(B.maxLon-B.minLon)*kx, H=(B.maxLat-B.minLat), VW=900, VH=Math.round(VW*H/W), PAD=18;
   const svg=$('#svg'); svg.setAttribute('viewBox',`0 0 ${VW} ${VH}`);
   const proj=(lon,lat)=>[(lon-B.minLon)*kx/W*(VW-2*PAD)+PAD,(B.maxLat-lat)/H*(VH-2*PAD)+PAD];
+  // faint tracks of the boats that beat LJ, drawn UNDER LJ's line so the shore split is visible
+  for(const rt of (DATA.rivalTracks||[])){
+    const pl=document.createElementNS(NS,'polyline'); pl.setAttribute('fill','none');
+    pl.setAttribute('stroke',rt.color||'#7f97ad'); pl.setAttribute('stroke-width',1.4); pl.setAttribute('opacity','0.42');
+    pl.setAttribute('stroke-linejoin','round'); pl.setAttribute('stroke-linecap','round');
+    pl.setAttribute('points',rt.pts.map(([lo,la])=>proj(lo,la).join(',')).join(' ')); svg.appendChild(pl);
+  }
   // split track into per-leg polylines
   let cur=null,curLeg=-1;
   for(const [lon,lat,leg] of DATA.track){
@@ -113,7 +120,8 @@ $('#banner').innerHTML = `This race was extraordinarily light. <b>${op.offPct}% 
   const s=DATA.track[0], f=DATA.track[DATA.track.length-1];
   mk(s[0],s[1],5,'#eaf1f7','Start/Finish');
   mk(DATA.mark.lon,DATA.mark.lat,6,'#e0a92a',`Le Bouveret · rounded +${DATA.mark.at_h}h`);
-  $('#legkey').innerHTML = LEGNAME.map((n,i)=>`<span class="legc" style="background:${LEGCOL[i]}"></span>${n} <span style="color:#6f889e">(${DATA.legs[i].hint})</span>`).join('&nbsp;&nbsp; ');
+  $('#legkey').innerHTML = LEGNAME.map((n,i)=>`<span class="legc" style="background:${LEGCOL[i]}"></span>${n} <span style="color:#6f889e">(${DATA.legs[i].hint})</span>`).join('&nbsp;&nbsp; ')
+    + ((DATA.rivalTracks&&DATA.rivalTracks.length)?`<br><span style="color:#6f889e">Faint lines = the ${DATA.rivalTracks.length} boats that beat you on corrected time — note them further south on the return.</span>`:'');
 })();
 
 // ---- weakness matrix (tier-aware: 4–6 kt row is modelled → faded + hatched + star) ----
