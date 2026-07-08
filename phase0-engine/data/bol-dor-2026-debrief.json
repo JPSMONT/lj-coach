@@ -1422,5 +1422,74 @@
     "avgTrim": 0
    }
   ]
+ },
+ "routeSplit": {
+  "source": "Rivals GPS tracks vs LJ, corrected-time beaters",
+  "beaters": [
+   "illico",
+   "Ondine",
+   "TALAN",
+   "Giachen",
+   "Tanoshii"
+  ],
+  "headline": "Return (mark back to the finish): LJ averaged 342 m NORTH (Vaud) of the 5 boats that beat you — they committed to the south / French shore. Follow them next time.",
+  "legs": [
+   {
+    "leg": "Outbound (up-lake to the mark)",
+    "key": "outbound",
+    "meanOffset_m": 30,
+    "side": "N (Vaud / Swiss)",
+    "perRival": [
+     {
+      "label": "illico",
+      "offset_m": -548
+     },
+     {
+      "label": "TALAN",
+      "offset_m": -97
+     },
+     {
+      "label": "Ondine",
+      "offset_m": -23
+     },
+     {
+      "label": "Giachen",
+      "offset_m": 356
+     },
+     {
+      "label": "Tanoshii",
+      "offset_m": 462
+     }
+    ]
+   },
+   {
+    "leg": "Return (mark back to the finish)",
+    "key": "return_",
+    "meanOffset_m": 342,
+    "side": "N (Vaud / Swiss)",
+    "perRival": [
+     {
+      "label": "Giachen",
+      "offset_m": -174
+     },
+     {
+      "label": "TALAN",
+      "offset_m": 127
+     },
+     {
+      "label": "Ondine",
+      "offset_m": 287
+     },
+     {
+      "label": "illico",
+      "offset_m": 440
+     },
+     {
+      "label": "Tanoshii",
+      "offset_m": 1031
+     }
+    ]
+   }
+  ]
  }
 }

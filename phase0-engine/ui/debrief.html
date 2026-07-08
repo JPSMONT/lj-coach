@@ -72,6 +72,10 @@
   <div class="grp">Leg splits</div>
   <div style="overflow-x:auto"><table id="legs"></table></div>
 
+  <div class="grp" id="rsgrp" style="display:none">Route split — where your path cost you (vs the boats that beat you)</div>
+  <div class="banner" id="routesplit" style="display:none"></div>
+  <div id="routesplitlegs" style="font-size:12px;color:#cfe0ef"></div>
+
   <div class="grp">Instrument-log mode — heel/trim cause-finder <span id="iltag" style="color:#e0a92a"></span></div>
   <div class="banner" id="ilbanner" style="background:#132a1f;border-color:#1e5a3e;border-left-color:#2aa06a;color:#bfe7d4"></div>
   <div class="sub" style="margin:8px 0">This is what the Debrief becomes on the boat's own data: measured STW and true wind, so nothing is model or SOG. Because the DST810 also gives <b>heel and trim</b>, each under-polar cell can be read against how the boat was sitting — the test that separates a trim / crew-weight problem from a helming one.</div>
@@ -1508,6 +1512,75 @@ const DATA = {
     "avgTrim": 0
    }
   ]
+ },
+ "routeSplit": {
+  "source": "Rivals GPS tracks vs LJ, corrected-time beaters",
+  "beaters": [
+   "illico",
+   "Ondine",
+   "TALAN",
+   "Giachen",
+   "Tanoshii"
+  ],
+  "headline": "Return (mark back to the finish): LJ averaged 342 m NORTH (Vaud) of the 5 boats that beat you — they committed to the south / French shore. Follow them next time.",
+  "legs": [
+   {
+    "leg": "Outbound (up-lake to the mark)",
+    "key": "outbound",
+    "meanOffset_m": 30,
+    "side": "N (Vaud / Swiss)",
+    "perRival": [
+     {
+      "label": "illico",
+      "offset_m": -548
+     },
+     {
+      "label": "TALAN",
+      "offset_m": -97
+     },
+     {
+      "label": "Ondine",
+      "offset_m": -23
+     },
+     {
+      "label": "Giachen",
+      "offset_m": 356
+     },
+     {
+      "label": "Tanoshii",
+      "offset_m": 462
+     }
+    ]
+   },
+   {
+    "leg": "Return (mark back to the finish)",
+    "key": "return_",
+    "meanOffset_m": 342,
+    "side": "N (Vaud / Swiss)",
+    "perRival": [
+     {
+      "label": "Giachen",
+      "offset_m": -174
+     },
+     {
+      "label": "TALAN",
+      "offset_m": 127
+     },
+     {
+      "label": "Ondine",
+      "offset_m": 287
+     },
+     {
+      "label": "illico",
+      "offset_m": 440
+     },
+     {
+      "label": "Tanoshii",
+      "offset_m": 1031
+     }
+    ]
+   }
+  ]
  }
 };
 
@@ -1592,6 +1665,26 @@ renderPos('#posmod', DATA.byPointModelled, true);
       +`<td>${fmt(l.certPct,l.certN,false)}</td><td>${fmt(l.modPct,l.modN,true)}</td><td>${l.offPct}%</td></tr>`;
   }).join('');
   $('#legs').innerHTML=`<thead><tr><th class="l">Leg</th><th>Time</th><th>Distance</th><th>Mean SOG</th><th>Certified 6kt+</th><th>Modelled 4–6</th><th>Off-polar</th></tr></thead><tbody>${rows}</tbody>`;
+})();
+
+// Route split — quantifies which shore LJ was on vs the boats that beat it (the "learn from their path" read).
+(function(){
+  const rs=DATA.routeSplit;
+  if(rs && rs.legs && rs.legs.length){
+    $('#rsgrp').style.display=''; const b=$('#routesplit'); b.style.display='';
+    b.innerHTML=`<b>Where your route cost you.</b> ${rs.headline}`;
+    const maxA=Math.max(1,...rs.legs.flatMap(L=>L.perRival.map(p=>Math.abs(p.offset_m))));
+    $('#routesplitlegs').innerHTML=rs.legs.map(L=>{
+      const bars=L.perRival.map(p=>{
+        const w=Math.max(2,Math.round(Math.abs(p.offset_m)/maxA*120)), north=p.offset_m>=0;
+        return `<div style="display:flex;align-items:center;gap:8px;margin:2px 0">`
+          +`<span style="width:78px;color:#9fb4c8;font-size:11px">${p.label}</span>`
+          +`<span style="flex:0 0 130px;display:flex;justify-content:${north?'flex-start':'flex-end'}"><span style="height:9px;width:${w}px;background:${north?'#ff5a3c':'#3ca7ff'};border-radius:2px"></span></span>`
+          +`<span style="font-size:11px;color:#8aa0b4">${p.offset_m>=0?'+':''}${p.offset_m} m ${north?'N':'S'}</span></div>`;
+      }).join('');
+      return `<div style="margin:9px 0"><div style="font-weight:700;font-size:12.5px">${L.leg}: mean ${L.meanOffset_m>=0?'+':''}${L.meanOffset_m} m &rarr; LJ ${L.side}</div>${bars}</div>`;
+    }).join('')+`<div style="color:#6f889e;font-size:11px;margin-top:6px">+ = LJ north (Vaud/Swiss) of that boat &middot; &minus; = LJ south (Savoie/French). Compared over shared longitudes against the ${rs.beaters.length} boats that beat you on corrected time.</div>`;
+  }
 })();
 
 // ---- instrument-log mode (heel/trim cause-finder) ----
