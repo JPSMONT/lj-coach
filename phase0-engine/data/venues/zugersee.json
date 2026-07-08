@@ -790,6 +790,134 @@
        "corrected": "01:31:11"
       }
      ]
+    },
+    {
+     "year": 2024,
+     "entries": 6,
+     "marks": "Time trial, triangle",
+     "note": "Ranked by laps then Yardstick-corrected time.",
+     "results": [
+      {
+       "rank": 1,
+       "skipper": "Röbi Auf der Maur",
+       "cls": "Bavaria 29 Speed",
+       "sailno": "SUI 8",
+       "corrected": "00:20:24"
+      },
+      {
+       "rank": 2,
+       "skipper": "Eduard Huber",
+       "cls": "Biga 270",
+       "sailno": "SUI 103",
+       "corrected": "00:26:19"
+      },
+      {
+       "rank": 3,
+       "skipper": "Hans Keller",
+       "cls": "H-Boot",
+       "sailno": "SUI 429",
+       "corrected": "00:30:02"
+      },
+      {
+       "rank": 4,
+       "skipper": "Beat Reutemann",
+       "cls": "Schärenkreuzer",
+       "sailno": "SUI 119",
+       "corrected": "00:39:37"
+      },
+      {
+       "rank": 5,
+       "skipper": "Roger Illi",
+       "cls": "Esse 850",
+       "sailno": "SUI 12",
+       "corrected": "00:51:45"
+      },
+      {
+       "rank": 6,
+       "skipper": "Evelyn Schilter",
+       "cls": "Lüthi Black Bird",
+       "sailno": "Z10",
+       "corrected": "00:52:11"
+      }
+     ]
+    },
+    {
+     "year": 2023,
+     "entries": 10,
+     "marks": "Time trial, triangle",
+     "note": "Ranked by laps then Yardstick-corrected time.",
+     "results": [
+      {
+       "rank": 1,
+       "skipper": "Röbi Auf der Maur",
+       "cls": "Bavaria Speedo",
+       "sailno": "SUI 8",
+       "corrected": "00:20:09"
+      },
+      {
+       "rank": 2,
+       "skipper": "Armin Glanzmann",
+       "cls": "Scandinavia 27",
+       "sailno": "S 27",
+       "corrected": "00:32:33"
+      },
+      {
+       "rank": 3,
+       "skipper": "Joao Monteiro",
+       "cls": "CYD27",
+       "sailno": "SUI 6116",
+       "corrected": "00:33:17"
+      },
+      {
+       "rank": 4,
+       "skipper": "Eduard Huber",
+       "cls": "Biga 270",
+       "sailno": "SUI 103",
+       "corrected": "00:35:05"
+      },
+      {
+       "rank": 5,
+       "skipper": "Roger Illi",
+       "cls": "Esse 850",
+       "sailno": "SUI 12",
+       "corrected": "00:36:45"
+      },
+      {
+       "rank": 6,
+       "skipper": "Thomas Wengel",
+       "cls": "Argo 680",
+       "sailno": "SUI 19",
+       "corrected": "00:41:07"
+      },
+      {
+       "rank": 7,
+       "skipper": "Beat Reutemann",
+       "cls": "Schärenkreuzer",
+       "sailno": "SUI 119",
+       "corrected": "00:44:27"
+      },
+      {
+       "rank": 8,
+       "skipper": "Evelyn Schilter",
+       "cls": "Lüthi Black Bird",
+       "sailno": "Z10",
+       "corrected": "00:51:51"
+      },
+      {
+       "rank": 9,
+       "skipper": "Armin Töngi",
+       "cls": "Argo 680",
+       "sailno": "SUI 19",
+       "corrected": "00:54:41"
+      },
+      {
+       "rank": 10,
+       "skipper": "Martin Kälin",
+       "cls": "Sunbeam 27",
+       "sailno": "SUI 240",
+       "corrected": "00:55:26"
+      }
+     ]
     }
    ]
   },
@@ -806,7 +934,7 @@
     {
      "year": 2026,
      "entries": 5,
-     "marks": "Classic triangle (Dreieckskurs), 3 laps",
+     "marks": "Triangle, 3 laps",
      "note": "Ranked by laps then Yardstick-corrected time.",
      "results": [
       {
@@ -849,7 +977,7 @@
     {
      "year": 2025,
      "entries": 5,
-     "marks": "Classic triangle (Dreieckskurs), 1 lap",
+     "marks": "Triangle, 1 lap",
      "note": "Ranked by laps then Yardstick-corrected time.",
      "results": [
       {
@@ -886,6 +1014,148 @@
        "cls": "J/70",
        "sailno": "SUI 139",
        "corrected": "03:20:35"
+      }
+     ]
+    },
+    {
+     "year": 2024,
+     "entries": 7,
+     "marks": "Triangle, 2 laps",
+     "note": "Ranked by laps then Yardstick-corrected time.",
+     "results": [
+      {
+       "rank": 1,
+       "skipper": "Röbi Auf der Maur",
+       "cls": "Bavaria 29 Speed",
+       "sailno": "SUI 8",
+       "corrected": "02:01:03"
+      },
+      {
+       "rank": 2,
+       "skipper": "Eduard Huber",
+       "cls": "Biga 270",
+       "sailno": "SUI 103",
+       "corrected": "02:12:37"
+      },
+      {
+       "rank": 3,
+       "skipper": "Hans Keller",
+       "cls": "H-Boot",
+       "sailno": "SUI 429",
+       "corrected": "02:19:35"
+      },
+      {
+       "rank": 4,
+       "skipper": "Beat Reutemann",
+       "cls": "Schärenkreuzer",
+       "sailno": "SUI 119",
+       "corrected": "02:23:29"
+      },
+      {
+       "rank": 5,
+       "skipper": "Roger Illi",
+       "cls": "Esse 850",
+       "sailno": "SUI 12",
+       "corrected": "02:33:25"
+      },
+      {
+       "rank": 6,
+       "skipper": "Evelyn Schilter",
+       "cls": "Lüthi Black Bird",
+       "sailno": "Z10",
+       "corrected": "01:19:40"
+      },
+      {
+       "rank": 7,
+       "skipper": "Armin Töngi",
+       "cls": "Argo 680",
+       "sailno": "SUI 19",
+       "corrected": "02:10:06"
+      }
+     ]
+    },
+    {
+     "year": 2023,
+     "entries": 11,
+     "marks": "Triangle, 2 laps",
+     "note": "Ranked by laps then Yardstick-corrected time.",
+     "results": [
+      {
+       "rank": 1,
+       "skipper": "Röbi Auf der Maur",
+       "cls": "Bavaria Speedo",
+       "sailno": "SUI 8",
+       "corrected": "01:52:37"
+      },
+      {
+       "rank": 2,
+       "skipper": "Eduard Huber",
+       "cls": "Biga 270",
+       "sailno": "SUI 103",
+       "corrected": "01:58:26"
+      },
+      {
+       "rank": 3,
+       "skipper": "Joao Monteiro",
+       "cls": "CYD27",
+       "sailno": "SUI 6116",
+       "corrected": "02:02:20"
+      },
+      {
+       "rank": 4,
+       "skipper": "Roger Illi",
+       "cls": "Esse 850",
+       "sailno": "SUI 12",
+       "corrected": "02:05:00"
+      },
+      {
+       "rank": 5,
+       "skipper": "Thomas Wengel",
+       "cls": "Argo 680",
+       "sailno": "SUI 19",
+       "corrected": "02:08:09"
+      },
+      {
+       "rank": 6,
+       "skipper": "Armin Glanzmann",
+       "cls": "Scandinavia 27",
+       "sailno": "S 27",
+       "corrected": "02:13:38"
+      },
+      {
+       "rank": 7,
+       "skipper": "Evelyn Schilter",
+       "cls": "Lüthi Black Bird",
+       "sailno": "Z10",
+       "corrected": "02:13:56"
+      },
+      {
+       "rank": 8,
+       "skipper": "Marco Erculiani",
+       "cls": "First 24 SE",
+       "sailno": "SUI 218",
+       "corrected": "02:17:11"
+      },
+      {
+       "rank": 9,
+       "skipper": "Beat Reutemann",
+       "cls": "Schärenkreuzer",
+       "sailno": "SUI 119",
+       "corrected": "02:21:00"
+      },
+      {
+       "rank": 10,
+       "skipper": "Martin Kälin",
+       "cls": "Sunbeam 27",
+       "sailno": "SUI 240",
+       "corrected": "03:25:21"
+      },
+      {
+       "rank": 11,
+       "skipper": "Armin Töngi",
+       "cls": "Argo 680",
+       "sailno": "SUI 19",
+       "corrected": "03:43:28"
       }
      ]
     }
@@ -934,6 +1204,85 @@
        "cls": "J/70",
        "sailno": "SUI 139",
        "corrected": "01:23:26"
+      }
+     ]
+    },
+    {
+     "year": 2024,
+     "entries": 4,
+     "marks": "Night race",
+     "note": "Ranked by laps then Yardstick-corrected time.",
+     "results": [
+      {
+       "rank": 1,
+       "skipper": "Röbi Auf der Maur",
+       "cls": "Bavaria 29 Speed",
+       "sailno": "SUI 8",
+       "corrected": "01:18:57"
+      },
+      {
+       "rank": 2,
+       "skipper": "Eduard Huber",
+       "cls": "Biga 270",
+       "sailno": "SUI 103",
+       "corrected": "01:29:00"
+      },
+      {
+       "rank": 3,
+       "skipper": "Evelyn Schilter",
+       "cls": "Lüthi Black Bird",
+       "sailno": "Z10",
+       "corrected": "01:31:24"
+      },
+      {
+       "rank": 4,
+       "skipper": "Beat Reutemann",
+       "cls": "Schärenkreuzer",
+       "sailno": "SUI 119",
+       "corrected": "01:32:23"
+      }
+     ]
+    },
+    {
+     "year": 2023,
+     "entries": 5,
+     "marks": "Night race",
+     "note": "Ranked by laps then Yardstick-corrected time.",
+     "results": [
+      {
+       "rank": 1,
+       "skipper": "Röbi Auf der Maur",
+       "cls": "Bavaria Speedo",
+       "sailno": "SUI 8",
+       "corrected": "00:54:22"
+      },
+      {
+       "rank": 2,
+       "skipper": "Eduard Huber",
+       "cls": "Biga 270",
+       "sailno": "SUI 103",
+       "corrected": "01:01:19"
+      },
+      {
+       "rank": 3,
+       "skipper": "Joao Monteiro",
+       "cls": "CYD27",
+       "sailno": "SUI 6116",
+       "corrected": "01:02:46"
+      },
+      {
+       "rank": 4,
+       "skipper": "Marco Erculiani",
+       "cls": "First 24 SE",
+       "sailno": "SUI 218",
+       "corrected": "01:09:54"
+      },
+      {
+       "rank": 5,
+       "skipper": "Evelyn Schilter",
+       "cls": "Lüthi Black Bird",
+       "sailno": "Z10",
+       "corrected": "01:18:16"
       }
      ]
     }
@@ -1069,6 +1418,77 @@
        "corrected": "04:48:12"
       }
      ]
+    },
+    {
+     "year": 2024,
+     "entries": 9,
+     "marks": "Sommerregatta / Bisang, 2 laps",
+     "note": "Ranked by laps then Yardstick-corrected time.",
+     "results": [
+      {
+       "rank": 1,
+       "skipper": "Hans-Jörg Spiess",
+       "cls": "Heron",
+       "sailno": "SUI Z-1",
+       "corrected": "01:09:03"
+      },
+      {
+       "rank": 2,
+       "skipper": "Röbi Auf der Maur",
+       "cls": "Bavaria 29 Speed",
+       "sailno": "SUI 8",
+       "corrected": "01:46:19"
+      },
+      {
+       "rank": 3,
+       "skipper": "Hans Keller",
+       "cls": "H-Boot",
+       "sailno": "SUI 429",
+       "corrected": "01:54:53"
+      },
+      {
+       "rank": 4,
+       "skipper": "Evelyn Schilter",
+       "cls": "Lüthi Black Bird",
+       "sailno": "Z10",
+       "corrected": "01:58:01"
+      },
+      {
+       "rank": 5,
+       "skipper": "Eduard Huber",
+       "cls": "Biga 270",
+       "sailno": "SUI 103",
+       "corrected": "01:59:30"
+      },
+      {
+       "rank": 6,
+       "skipper": "Joao Monteiro",
+       "cls": "CYD27",
+       "sailno": "SUI 6116",
+       "corrected": "02:00:37"
+      },
+      {
+       "rank": 7,
+       "skipper": "Beat Reutemann",
+       "cls": "Schärenkreuzer",
+       "sailno": "SUI 119",
+       "corrected": "02:10:54"
+      },
+      {
+       "rank": 8,
+       "skipper": "Roger Illi",
+       "cls": "Esse 850",
+       "sailno": "SUI 12",
+       "corrected": "02:22:03"
+      },
+      {
+       "rank": 9,
+       "skipper": "Armin Töngi",
+       "cls": "Argo 680",
+       "sailno": "SUI 19",
+       "corrected": "02:40:12"
+      }
+     ]
     }
    ]
   },
@@ -1152,6 +1572,70 @@
        "corrected": "02:34:32"
       }
      ]
+    },
+    {
+     "year": 2023,
+     "entries": 8,
+     "marks": "Obersee Cup, 3–4 laps (24.06.2023)",
+     "note": "Ranked by laps then Yardstick-corrected time.",
+     "results": [
+      {
+       "rank": 1,
+       "skipper": "Röbi Auf der Maur",
+       "cls": "Bavaria Speedo",
+       "sailno": "SUI 8",
+       "corrected": "02:13:59"
+      },
+      {
+       "rank": 2,
+       "skipper": "Eduard Huber",
+       "cls": "Biga 270",
+       "sailno": "SUI 103",
+       "corrected": "02:17:55"
+      },
+      {
+       "rank": 3,
+       "skipper": "Joao Monteiro",
+       "cls": "CYD27",
+       "sailno": "SUI 6116",
+       "corrected": "02:24:41"
+      },
+      {
+       "rank": 4,
+       "skipper": "Beat Reutemann",
+       "cls": "Schärenkreuzer",
+       "sailno": "SUI 119",
+       "corrected": "02:26:44"
+      },
+      {
+       "rank": 5,
+       "skipper": "Roger Illi",
+       "cls": "Esse 850",
+       "sailno": "SUI 12",
+       "corrected": "02:30:00"
+      },
+      {
+       "rank": 6,
+       "skipper": "Dani Mutter",
+       "cls": "Sangria",
+       "sailno": "—",
+       "corrected": "02:45:11"
+      },
+      {
+       "rank": 7,
+       "skipper": "Evelyn Schilter",
+       "cls": "Lüthi Black Bird",
+       "sailno": "Z10",
+       "corrected": "02:13:56"
+      },
+      {
+       "rank": 8,
+       "skipper": "Armin Glanzmann",
+       "cls": "Scandinavia 27",
+       "sailno": "S 27",
+       "corrected": "02:23:28"
+      }
+     ]
     }
    ]
   },
@@ -1171,7 +1655,7 @@
      "entries": 19,
      "metric": "distance",
      "marks": "3-hour distance race, Boje 1-2-3 loop off Arth",
-     "note": "Ranked by Yardstick-corrected distance sailed in the time limit.",
+     "note": "OSCA official Yardstick-corrected distance ranking.",
      "results": [
       {
        "rank": 1,
@@ -1305,6 +1789,127 @@
        "cls": "First 210",
        "sailno": "SUI 423",
        "corrected": "7.95 km"
+      }
+     ]
+    },
+    {
+     "year": 2024,
+     "entries": 16,
+     "metric": "distance",
+     "marks": "3-hour distance race off Arth (31.08.2024)",
+     "note": "OSCA official Yardstick-corrected distance ranking.",
+     "results": [
+      {
+       "rank": 1,
+       "skipper": "Raphael Näf",
+       "cls": "T780",
+       "sailno": "SUI 780",
+       "corrected": "7.69 km"
+      },
+      {
+       "rank": 2,
+       "skipper": "Hans-Jörg Spiess",
+       "cls": "Heron",
+       "sailno": "SUI Z-1",
+       "corrected": "7.27 km"
+      },
+      {
+       "rank": 3,
+       "skipper": "Bruno Oldani",
+       "cls": "Surprise",
+       "sailno": "SUI 451",
+       "corrected": "6.85 km"
+      },
+      {
+       "rank": 4,
+       "skipper": "Pit Müller",
+       "cls": "H323",
+       "sailno": "SUI 22",
+       "corrected": "6.46 km"
+      },
+      {
+       "rank": 5,
+       "skipper": "Martin Sprecher",
+       "cls": "Surprise",
+       "sailno": "SUI 169",
+       "corrected": "6.50 km"
+      },
+      {
+       "rank": 6,
+       "skipper": "Andreas Kälin",
+       "cls": "Archambault M34",
+       "sailno": "GER 11",
+       "corrected": "6.43 km"
+      },
+      {
+       "rank": 7,
+       "skipper": "Claudia Streuli",
+       "cls": "J/70",
+       "sailno": "SUI 139",
+       "corrected": "6.39 km"
+      },
+      {
+       "rank": 8,
+       "skipper": "Stefan Scherrer",
+       "cls": "Ufo 22",
+       "sailno": "SUI 050",
+       "corrected": "6.13 km"
+      },
+      {
+       "rank": 9,
+       "skipper": "Fritz Selb",
+       "cls": "J/80",
+       "sailno": "SUI 1335",
+       "corrected": "6.11 km"
+      },
+      {
+       "rank": 10,
+       "skipper": "Robert Auf der Maur",
+       "cls": "Bavaria 29 Speed",
+       "sailno": "SUI 8",
+       "corrected": "5.81 km"
+      },
+      {
+       "rank": 11,
+       "skipper": "René Büttiker",
+       "cls": "Tonic 23",
+       "sailno": "SUI 42",
+       "corrected": "5.79 km"
+      },
+      {
+       "rank": 12,
+       "skipper": "Eduard Huber",
+       "cls": "Biga 270",
+       "sailno": "SUI 103",
+       "corrected": "5.67 km"
+      },
+      {
+       "rank": 13,
+       "skipper": "Joao Monteiro",
+       "cls": "CYD27",
+       "sailno": "SUI 6116",
+       "corrected": "5.36 km"
+      },
+      {
+       "rank": 14,
+       "skipper": "Martin Walt",
+       "cls": "First SE KS 24",
+       "sailno": "SUI 246",
+       "corrected": "5.34 km"
+      },
+      {
+       "rank": 15,
+       "skipper": "Daniel Odermatt",
+       "cls": "Reve de mer",
+       "sailno": "SUI 969",
+       "corrected": "5.29 km"
+      },
+      {
+       "rank": 16,
+       "skipper": "Marco Erculiani",
+       "cls": "First SE KS 24",
+       "sailno": "SUI 218",
+       "corrected": "4.91 km"
       }
      ]
     }
