@@ -1158,6 +1158,77 @@
        "corrected": "03:43:28"
       }
      ]
+    },
+    {
+     "year": 2022,
+     "entries": 9,
+     "marks": "Triangle",
+     "note": "Ranked by laps then Yardstick-corrected time.",
+     "results": [
+      {
+       "rank": 1,
+       "skipper": "Joao Monteiro",
+       "cls": "CYD27",
+       "sailno": "SUI 6116",
+       "corrected": "01:47:28"
+      },
+      {
+       "rank": 2,
+       "skipper": "Robert Auf der Maur",
+       "cls": "Bavaria Speed 29",
+       "sailno": "SUI 8",
+       "corrected": "01:49:58"
+      },
+      {
+       "rank": 3,
+       "skipper": "Beat Reutemann",
+       "cls": "30er Schärenkreuzer",
+       "sailno": "SUI 119",
+       "corrected": "02:03:21"
+      },
+      {
+       "rank": 4,
+       "skipper": "Roger Illi",
+       "cls": "Esse 850",
+       "sailno": "SUI 12",
+       "corrected": "02:08:53"
+      },
+      {
+       "rank": 5,
+       "skipper": "Daniel Mutter",
+       "cls": "Janneau Sangria",
+       "sailno": "SUI 01",
+       "corrected": "02:10:35"
+      },
+      {
+       "rank": 6,
+       "skipper": "Evelyne Schilter",
+       "cls": "Black Bird",
+       "sailno": "Z 10",
+       "corrected": "02:11:23"
+      },
+      {
+       "rank": 7,
+       "skipper": "Armin Glanzmann",
+       "cls": "Scandinavia 27",
+       "sailno": "S 27",
+       "corrected": "02:12:44"
+      },
+      {
+       "rank": 8,
+       "skipper": "René Kenel",
+       "cls": "Granada 35",
+       "sailno": "—",
+       "corrected": "02:12:44"
+      },
+      {
+       "rank": 9,
+       "skipper": "Hans Keller",
+       "cls": "H-Boot",
+       "sailno": "SUI 429",
+       "corrected": "02:13:34"
+      }
+     ]
     }
    ]
   },
@@ -1942,5 +2013,6 @@
  "series": [
   "OSCA Clubmeisterschaft (Jahresmeisterschaft)",
   "Zugersee Cup (cross-club, zugerseecup.ch)"
- ]
+ ],
+ "analysis_note": "Zugersee races are short club triangles (~2–3 nm). Read these results as a competitive benchmark — fleet speed, who to watch, and Little Johnka's own trend — not a source of tactical route lessons: on a short course every boat sails almost the same line. Learning from rivals' paths (route, shore and wind choices) needs a long course, so that analysis is reserved for the Bol d'Or and other long regattas (see the Debrief tab)."
 }

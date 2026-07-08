@@ -58,6 +58,7 @@
   <div class="sub" id="summary"></div>
 
   <div class="grp" id="rgrp" style="display:none">Regattas at this venue — pick one</div>
+  <div class="sub" id="ranalysis" style="display:none;margin:-2px 0 9px"></div>
   <div id="rwrap" style="display:none">
     <select id="rpick" class="rsel"></select>
     <div class="card rcard" id="rdetail"></div>
@@ -184,9 +185,10 @@ function regattaCard(r) {
     + (r.note ? `<div class="tac">${r.note}</div>` : '');
 }
 function renderRegattas(D) {
-  const rg = $('#rgrp'), rw = $('#rwrap');
-  if (!D.regattas || !D.regattas.length) { rg.style.display = 'none'; rw.style.display = 'none'; return; }
+  const rg = $('#rgrp'), rw = $('#rwrap'), ra = $('#ranalysis');
+  if (!D.regattas || !D.regattas.length) { rg.style.display = 'none'; rw.style.display = 'none'; ra.style.display = 'none'; return; }
   rg.style.display = ''; rw.style.display = '';
+  if (D.analysis_note) { ra.textContent = D.analysis_note; ra.style.display = ''; } else ra.style.display = 'none';
   const key = (r) => r.id || r.name;
   const opt = (r) => `<option value="${key(r)}">${r.name}${r.date ? ' · ' + r.date : ''}</option>`;
   let html = `<optgroup label="OSCA regattas">${D.regattas.map(opt).join('')}</optgroup>`;
