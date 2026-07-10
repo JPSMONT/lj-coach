@@ -19,6 +19,14 @@
   .seg button { border:0; background:#16273a; padding:7px 12px; font-size:12.5px; font-weight:600; color:#9fb4c8; cursor:pointer; }
   .seg button.on { background:#2E6BA8; color:#fff; }
   .pbtn { border:1px solid #2c435a; background:#16273a; border-radius:9px; padding:7px 14px; font-size:13px; font-weight:700; color:#eaf1f7; cursor:pointer; }
+  .decision { background:linear-gradient(180deg,#132536,#101f2e); border:1px solid #2c435a; border-left:6px solid #2E6BA8; border-radius:14px; padding:15px 17px; margin-bottom:12px; }
+  .decision.good { border-left-color:#2aa06a; } .decision.warn { border-left-color:#e0c34a; } .decision.bad { border-left-color:#ff5a3c; }
+  .decision .drow { display:flex; align-items:baseline; gap:16px; flex-wrap:wrap; }
+  .decision .dnum { font-size:66px; font-weight:900; line-height:.95; font-variant-numeric:tabular-nums; }
+  .decision .dunit { font-size:22px; font-weight:800; color:#9fb4c8; }
+  .decision .dcue { font-size:19px; font-weight:800; }
+  .decision .dsub { font-size:12.5px; color:#9fb4c8; margin-top:8px; line-height:1.5; }
+  .engtoggle { border:1px solid #2c435a; background:#16273a; border-radius:9px; padding:8px 13px; font-size:12.5px; font-weight:700; color:#9fb4c8; cursor:pointer; margin:0 0 12px; }
   .gauges { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
   @media (max-width:720px){ .gauges { grid-template-columns:repeat(2,1fr); } }
   .g { background:#16273a; border:1px solid #23384e; border-radius:12px; padding:11px 13px; }
@@ -63,11 +71,15 @@
     <div><div class="lbl">Leg</div><div id="posind" style="font-weight:700;font-size:13px">—</div></div>
   </div>
 
-  <div class="gauges" id="gauges"></div>
+  <div class="decision" id="decision"></div>
+  <button class="engtoggle" id="engtoggle">Show instruments ▾</button>
 
-  <div class="panel">
-    <div class="fh" id="fh"></div>
-    <div id="fleet"></div>
+  <div id="engineer" style="display:none">
+    <div class="gauges" id="gauges"></div>
+    <div class="panel">
+      <div class="fh" id="fh"></div>
+      <div id="fleet"></div>
+    </div>
   </div>
 
   <div class="foot" id="foot"></div>
@@ -135,6 +147,15 @@ function gauge(k, v, unit, s, cls='', hi=false, stale=false) {
     + `<div class="v ${cls}">${v}${unit?`<small> ${unit}</small>`:''}</div>`
     + `<div class="s">${s||''}</div></div>`;
 }
+// the one cue: on pace, or which way to steer to build speed (up/down mode)
+function cueText(pos, pct) {
+  if (pct == null) return '';
+  if (pct >= 100) return pos === 'beat' ? 'ON PACE — you can point' : pos === 'run' ? 'ON PACE — soak lower' : 'ON PACE — hold your mode';
+  if (pos === 'beat') return 'SLOW — bow DOWN, build speed, then come back up';
+  if (pos === 'run') return 'SLOW — heat UP (bow up) to build, then soak';
+  return 'SLOW — ease / foot for speed';
+}
+
 function render() {
   const now = Date.now();
   const tw = trueWindOf(live);
@@ -146,6 +167,19 @@ function render() {
   const pct = pctOfTarget(ljMetric, target);
   const pctCls = pct == null ? '' : pct >= 99 ? 'good' : pct >= 95 ? 'warn' : 'bad';
   const windStale = isStale(live, 'aws_kn', now);
+
+  // ---- the Decision (default view): one number + one cue + who you're losing to ----
+  const cls = pct == null ? '' : pct >= 99 ? 'good' : pct >= 95 ? 'warn' : 'bad';
+  const setDecision = (losing) => {
+    const dc = $('#decision');
+    if (pct == null) { dc.className = 'decision'; dc.innerHTML = `<div class="dcue">Waiting for wind + boatspeed…</div><div class="dsub">The below-deck iPhone reads the gateway; the one number to chase shows here.</div>`; return; }
+    const tgt = target != null ? `target ${isVmg ? 'VMG ' : ''}${fx(target, 2)} kn · you ${fx(ljMetric, 2)} kn` : '';
+    const lose = losing == null ? '' : losing === '' ? ' &nbsp;·&nbsp; <b style="color:#7ee0a8">ahead of the fleet</b>' : ` &nbsp;·&nbsp; <b style="color:#ff9a8b">${losing}</b>`;
+    dc.className = 'decision ' + cls;
+    dc.innerHTML = `<div class="drow"><div><span class="dnum ${cls}">${pct.toFixed(0)}</span><span class="dunit">% polar</span></div>`
+      + `<div class="dcue ${cls}">${cueText(pos, pct)}</div></div>`
+      + `<div class="dsub">${posLabel(pos)} · ${fx(tws, 1)} kt true — ${tgt}${lose}</div>`;
+  };
 
   $('#posind').textContent = SAIL[(st.idx + SAIL.length - 1) % SAIL.length]?.label ?? '—';
 
@@ -163,7 +197,7 @@ function render() {
 
   // live fleet margin using ACTUAL boatspeed
   const fh = $('#fh'), fleetEl = $('#fleet');
-  if (pos == null || live.stw_kn == null) { fh.innerHTML = 'Waiting for wind + boatspeed…'; fleetEl.innerHTML = ''; return; }
+  if (pos == null || live.stw_kn == null) { setDecision(null); fh.innerHTML = 'Waiting for wind + boatspeed…'; fleetEl.innerHTML = ''; return; }
   fh.innerHTML = `Right now — <b>${posLabel(pos)}</b> · <b>${fx(tws,1)} kt</b> true · sailing <b class="${pctCls}">${pct==null?'–':pct.toFixed(0)}%</b> of polar · ${sysName()}`;
   const fleet = liveFleet(LJ, RIVALS, { actualStw: ljMetric, angle: pos, tws, systemId: st.sys, grid: GRID });
   fleetEl.innerHTML = fleet.map((r) => {
@@ -174,6 +208,9 @@ function render() {
       + `<div class="track"><div class="mid"></div><div class="${fillCls}" style="width:${w}%;background:${bg(v)}"></div></div>`
       + `<div class="mval" style="color:${bg(v)}">${v>=0?'+':''}${v.toFixed(1)}%</div></div>`;
   }).join('');
+  // who you're losing to right now = the boat you're behind by the smallest margin (most catchable)
+  const behind = fleet.filter((r) => r.status === 'ok' && r.pct < 0).sort((a, b) => b.pct - a.pct);
+  setDecision(behind.length ? `Losing to ${behind[0].name} by ${Math.abs(behind[0].pct).toFixed(1)}%${behind[0].pct > -3 ? ' — one shift away' : ''}` : '');
   $('#foot').innerHTML = `Green bar = Little Johnka ahead on corrected time, red = behind, at this instant. Uses your <b>measured boatspeed</b> vs each rival's polar (so sailing below target costs margin). <b>?/–</b> = no rating in this system. Bars centred on break-even. Demo feed = a scripted sail through the full decode→state→engine pipeline; on the boat the YDWG‑02 replaces the simulator. Heel & trim are live from the DST810; true wind is derived.`;
 }
 
@@ -191,6 +228,7 @@ let timer = setInterval(() => { if (st.play) { step(); render(); } }, 700);
 
 $('#sys').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; st.sys = b.dataset.sys; [...e.currentTarget.children].forEach(x => x.classList.toggle('on', x === b)); render(); });
 $('#play').addEventListener('click', () => { st.play = !st.play; $('#play').textContent = st.play ? '❚❚ Pause' : '► Play'; });
+$('#engtoggle').addEventListener('click', () => { const e = $('#engineer'); const show = e.style.display === 'none'; e.style.display = show ? '' : 'none'; $('#engtoggle').textContent = show ? 'Hide instruments ▴' : 'Show instruments ▾'; });
 </script>
 </body>
 </html>

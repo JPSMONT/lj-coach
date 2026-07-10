@@ -41,6 +41,7 @@
   <h1 id="title">Debrief</h1>
   <div class="sub" id="intro"></div>
 
+  <div class="banner" id="twofixes" style="display:none;border-left-color:#2aa06a"></div>
   <div class="banner" id="banner"></div>
 
   <div class="grp">Route — coloured by leg</div>
@@ -89,6 +90,23 @@ $('#intro').innerHTML = `Wind: ${DATA.windSource}. This is the debrief spine —
 // honesty banner — three tiers of confidence
 const op=DATA.offPolar, ti=DATA.tiers;
 $('#banner').innerHTML = `This race was extraordinarily light. <b>${op.offPct}% was below ${op.modelFloor} kt</b> — off-polar, unscoreable at any confidence. A further <b>${op.modelledPct}% (${op.modelFloor}&ndash;${op.certFloor} kt)</b> is scored against a <b>modelled</b> light-air polar — shown faded/starred, low confidence. Only <b>${ti.certified} fixes</b> sit in the certified ${op.certFloor} kt+ band: that is the trustworthy signal. Certified overall ${DATA.overallPct}% of polar; modelled 4&ndash;6 kt overall ${DATA.overallModelledPct}%.`;
+
+// ---- headline: fix these two things (1 speed + 1 route) — the decision, tables below are the drill-down ----
+(function(){
+  const posName=(p)=>p==='beat'?'the upwind beat':p==='run'?'the run':p+'°';
+  const sf=(DATA.weakest||[]).find(w=>w.pos!=='run' && w.avgPct<100);   // worst REAL certified point of sail (run 108% = SOG artifact)
+  const rs=DATA.routeSplit;
+  if(!sf && !(rs&&rs.legs&&rs.legs.length)) return;
+  let speed='';
+  if(sf){ const hint = sf.pos==='beat' ? 'light-air height — foot for speed before pointing' : (Number(sf.pos)>=120 ? 'broad-reach mode — kite trim, soak with the pressure' : 'work this angle'); speed=`<b>Speed —</b> slowest at <b>${posName(sf.pos)}</b>: ${sf.avgPct.toFixed(0)}% of polar (certified ${sf.band} kt, n=${sf.n}). ${hint}.`; }
+  let route='';
+  if(rs&&rs.legs&&rs.legs.length){ const w=rs.legs.slice().sort((a,b)=>Math.abs(b.meanOffset_m)-Math.abs(a.meanOffset_m))[0]; const north=w.meanOffset_m>=0; route=`<b>Route —</b> ${w.leg.replace(/\s*\(.*\)\s*/,'')}: you were ${Math.abs(w.meanOffset_m)} m ${north?'north (Vaud)':'south (Savoie)'} of the boats that beat you; commit <b>${north?'south / French':'north / Swiss'}</b> earlier.`; }
+  const el=$('#twofixes'); el.style.display='';
+  el.innerHTML=`<b style="font-size:14px">Fix these two things next time.</b>`
+    + (speed?`<div style="margin-top:6px">${speed}</div>`:'')
+    + (route?`<div style="margin-top:5px">${route}</div>`:'')
+    + `<div style="margin-top:6px;color:#6f889e;font-size:11px">The tables below are the evidence. Speed read is indicative (model wind, SOG not STW) until the boat's own log.</div>`;
+})();
 
 // ---- route map, coloured by leg ----
 (function(){
