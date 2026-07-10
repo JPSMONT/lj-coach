@@ -60,13 +60,13 @@ const NAV_TABS = [['compare.html', 'Compare'], ['venue.html', 'Venue'], ['plan.h
 const NAV_CSS = `<style>/* injected by build.mjs — shared nav */
 .ljnav{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:2px;padding:8px 14px;background:#0b1622;border-bottom:1px solid #23384e;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
 .ljnav .brand{display:inline-flex;align-items:center;background:#fff;border-radius:7px;padding:3px 8px;margin-right:12px}
-.ljnav .brand img{height:22px;display:block}
+.ljnav .brand img{height:20px;display:block}
 .ljnav a{color:#9fb4c8;text-decoration:none;font-size:13px;font-weight:700;padding:6px 12px;border-radius:8px}
 .ljnav a:hover{background:#16273a;color:#eaf1f7}
 .ljnav a.active{background:#16273a;color:#eaf1f7;box-shadow:inset 0 -2px 0 #ff5a3c}
 @media(max-width:520px){.ljnav .brand{display:none}.ljnav a{padding:6px 9px;font-size:12px}}
 </style>`;
-const navBar = (active) => `<nav class="ljnav"><a href="index.html" class="brand"><img src="logo.png" alt="Little Johnka — SUI 6116" /></a>`
+const navBar = (active) => `<nav class="ljnav"><a href="index.html" class="brand"><img src="logo-h.png" alt="Little Johnka" /></a>`
   + NAV_TABS.map(([h, l]) => `<a href="${h}"${h === active ? ' class="active"' : ''}>${l}</a>`).join('') + `</nav>`;
 
 // PWA: installable + offline. Manifest + icons in <head>, service-worker registration before </body>.
