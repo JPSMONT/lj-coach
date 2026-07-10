@@ -94,28 +94,36 @@
     "dir": "NE (down-lake from Geneva)",
     "when": "cold, dry high-pressure NE; any time, often strong",
     "character": "Steady, can be 15–30 kt; kicks up chop in the Petit Lac. Gives an upwind exit from Geneva and a downwind return.",
-    "tactics": "Bise favours the SOUTH (French/Savoie) bank upwind — stronger pressure mid-lake, the most reliable Léman pattern. Fast race, downwind return is the passing lane."
+    "tactics": "Bise favours the SOUTH (French/Savoie) bank upwind — stronger pressure mid-lake, the most reliable Léman pattern. Fast race, downwind return is the passing lane.",
+    "bearing": 45,
+    "favoured_side": "SOUTH bank (French / Savoie) upwind"
    },
    {
     "name": "Vent (SW)",
     "dir": "SW / WSW (up-lake)",
     "when": "prevailing gradient + afternoon thermal on warm days",
     "character": "Builds midday; fills the Petit Lac and Grand Lac from the SW. The workhorse breeze.",
-    "tactics": "Afternoon filling from the SW favours the boats that got east first; watch for it filling from behind on the outbound leg."
+    "tactics": "Afternoon filling from the SW favours the boats that got east first; watch for it filling from behind on the outbound leg.",
+    "bearing": 225,
+    "favoured_side": "mid-lake; get EAST early as it fills"
    },
    {
     "name": "Vaudaire",
     "dir": "SE föhn from the Rhône valley",
     "when": "föhn conditions; strongest in the Haut Lac near Bouveret",
     "character": "Warm, gusty, can be violent at the east end — a different world from the Petit Lac.",
-    "tactics": "Decisive at the Bouveret rounding: the east end can have breeze while the middle is glassy. Approach with a plan for a big shift/pressure change."
+    "tactics": "Decisive at the Bouveret rounding: the east end can have breeze while the middle is glassy. Approach with a plan for a big shift/pressure change.",
+    "bearing": 135,
+    "favoured_side": "EAST end (Haut-Lac / Bouveret) holds the pressure"
    },
    {
     "name": "Joran / evening thermals",
     "dir": "NW off the Jura (Joran); local Molard/Rebat/Séchard",
     "when": "late afternoon / evening",
     "character": "Descends on the north (Vaud) shore in the evening; local thermals off both shores.",
-    "tactics": "Overnight and evening legs reward the crew who reads the shore thermals rather than sitting in the dying gradient."
+    "tactics": "Overnight and evening legs reward the crew who reads the shore thermals rather than sitting in the dying gradient.",
+    "bearing": 315,
+    "favoured_side": "NORTH (Vaud) shore in the evening"
    }
   ]
  },

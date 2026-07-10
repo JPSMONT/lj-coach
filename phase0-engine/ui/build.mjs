@@ -30,14 +30,17 @@ const bundle = (names) =>
 
 // Inline a data file as `const DATA = {...}`. If the path is a DIRECTORY, inline every *.json in
 // it as an array (used for venues: drop a data/venues/<venue>.json and it appears in the switcher).
-const dataBlock = (path) => {
+const dataBlock = (path, varName = 'DATA') => {
   const full = join(root, path);
   if (statSync(full).isDirectory()) {
     const files = readdirSync(full).filter((f) => f.endsWith('.json')).sort();
-    return `/* ---- inlined venues from ${path}/ ---- */\nconst DATA = [\n${files.map((f) => read(join(path, f)).trim()).join(',\n')}\n];`;
+    return `/* ---- inlined ${path}/ ---- */\nconst ${varName} = [\n${files.map((f) => read(join(path, f)).trim()).join(',\n')}\n];`;
   }
-  return `/* ---- inlined from ${path} ---- */\nconst DATA = ${read(path).trim()};`;
+  return `/* ---- inlined from ${path} ---- */\nconst ${varName} = ${read(path).trim()};`;
 };
+// A target's `data` is a path (→ const DATA) or an array of [varName, path] (→ several consts, e.g. the
+// Plan page needs both venues and the boat library).
+const dataDecl = (spec) => Array.isArray(spec) ? spec.map(([v, p]) => dataBlock(p, v)).join('\n') : dataBlock(spec);
 const today = new Date().toISOString().slice(0, 10);
 
 const TARGETS = [
@@ -46,13 +49,14 @@ const TARGETS = [
   { template: 'ui/debrief.template.html', out: 'ui/debrief.html', modules: [], data: 'data/bol-dor-2026-debrief.json' },
   { template: 'ui/trimlab.template.html', out: 'ui/trimlab.html', modules: [], data: 'data/trimlab-demo.json' },
   { template: 'ui/venue.template.html',   out: 'ui/venue.html',   modules: [], data: 'data/venues' },
+  { template: 'ui/plan.template.html',    out: 'ui/plan.html',    modules: ['ratings', 'engine', 'planner'], data: [['DATA', 'data/venues'], ['BOATS', 'data/boats.json']] },
 ];
 
 // One app, four pages: a shared sticky nav is injected into every generated page so they
 // cross-link and feel like a single app, while each page stays self-contained (opens offline,
 // keeps its own audited engine inline). Order matches TARGETS.
 // Rivals folded into Debrief (route-split) per the 8-Jul usability reframe — standalone tab retired.
-const NAV_TABS = [['compare.html', 'Compare'], ['venue.html', 'Venue'], ['cockpit.html', 'Cockpit'], ['debrief.html', 'Debrief'], ['trimlab.html', 'Trim Lab']];
+const NAV_TABS = [['compare.html', 'Compare'], ['venue.html', 'Venue'], ['plan.html', 'Plan'], ['cockpit.html', 'Cockpit'], ['debrief.html', 'Debrief'], ['trimlab.html', 'Trim Lab']];
 const NAV_CSS = `<style>/* injected by build.mjs — shared nav */
 .ljnav{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:2px;padding:8px 14px;background:#0b1622;border-bottom:1px solid #23384e;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
 .ljnav .brand{font-weight:800;font-size:13px;color:#ff5a3c;margin-right:12px;letter-spacing:.3px;white-space:nowrap}
@@ -67,7 +71,7 @@ const navBar = (active) => `<nav class="ljnav"><span class="brand">⛵ LJ Coach<
 for (const t of TARGETS) {
   let out = read(t.template)
     .replace('//__ENGINE__//', () => bundle(t.modules))
-    .replace('//__DATA__//', () => dataBlock(t.data));
+    .replace('//__DATA__//', () => dataDecl(t.data));
   if (out.includes('//__ENGINE__//') || out.includes('//__DATA__//')) {
     throw new Error(`build: a placeholder was not replaced in ${t.template}`);
   }

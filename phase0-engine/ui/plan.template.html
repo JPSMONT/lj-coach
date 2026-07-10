@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<!-- SOURCE TEMPLATE for plan.html. Do NOT edit plan.html by hand.
+     Pre-regatta Plan (moment 2) + the 20-second pre-start call (moment 3): fuse the venue's wind
+     climatology with a forecast/entered wind → favoured shore + who's catchable + the dock one-liner.
+     Edit this + src/planner.mjs, then: node ui/build.mjs -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Plan — LJ Coach</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0f1c2b;color:#eaf1f7}
+  .wrap{max-width:940px;margin:0 auto;padding:18px}
+  h1{font-size:20px;margin:0 0 2px}
+  .sub{color:#8aa0b4;font-size:12.5px;margin-bottom:12px;line-height:1.5}
+  .vpick{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 12px}
+  .vp{font-size:12.5px;font-weight:800;padding:6px 13px;border-radius:10px;background:#16273a;border:1px solid #2c435a;color:#9fb4c8;cursor:pointer}
+  .vp.sel{background:#20344b;border-color:#ff5a3c;color:#eaf1f7}
+  .controls{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;background:#16273a;border:1px solid #23384e;border-radius:12px;padding:12px 14px;margin-bottom:12px}
+  .fld label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:#8aa0b4;margin-bottom:4px;font-weight:700}
+  .fld input{width:96px;background:#0f1c2b;border:1px solid #2c435a;border-radius:9px;color:#eaf1f7;font-size:16px;font-weight:700;padding:8px 10px}
+  .btn{border:1px solid #2c435a;background:#16273a;border-radius:9px;padding:9px 14px;font-size:13px;font-weight:800;color:#eaf1f7;cursor:pointer}
+  .btn.go{background:#2E6BA8;border-color:#2E6BA8}
+  .fxnote{font-size:11px;color:#8aa0b4;flex-basis:100%}
+  .grp{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#8aa0b4;margin:16px 2px 7px;font-weight:700}
+  .prestart{background:linear-gradient(180deg,#132536,#101f2e);border:1px solid #2c435a;border-left:6px solid #2E6BA8;border-radius:14px;padding:15px 17px}
+  .prestart.good{border-left-color:#2aa06a}.prestart.warn{border-left-color:#e0c34a}.prestart.bad{border-left-color:#ff5a3c}
+  .prestart .l1{font-size:20px;font-weight:900;line-height:1.2}
+  .prestart .l2{font-size:12.5px;color:#9fb4c8;margin-top:7px;line-height:1.5}
+  .chip{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 9px;border-radius:9px;background:#16273a;border:1px solid #2c435a;color:#cfe0ef;margin-left:6px}
+  .chip.high{border-color:#2aa06a;color:#7ee0a8}.chip.medium{border-color:#e0c34a;color:#f0d97a}.chip.low{border-color:#ff5a3c;color:#ff9a8b}
+  .plan{background:#16273a;border:1px solid #23384e;border-radius:12px;padding:12px 14px;line-height:1.55;font-size:13px}
+  .plan .pn{font-size:15px;font-weight:800}
+  .plan .side{color:#7ee0a8;font-weight:800}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+  th{text-align:left;color:#8aa0b4;font-size:10px;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #2c435a;padding:5px 7px}
+  td{padding:5px 7px;border-bottom:1px solid #1b2c40}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+  .t-catchable{color:#7ee0a8}.t-marginal{color:#f0d97a}.t-out{color:#ff9a8b}
+  .foot{color:#6f889e;font-size:11px;margin-top:16px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title">Plan</h1>
+  <div class="sub">For this venue and today's wind: which shore to take, who's catchable on corrected time, and the pre-start call. Decision first — the reasoning is below it.</div>
+  <div class="vpick" id="vpick"></div>
+
+  <div class="controls">
+    <div class="fld"><label>Wind from (°)</label><input id="dir" type="number" min="0" max="360" step="5" value="45" /></div>
+    <div class="fld"><label>Wind (kt)</label><input id="spd" type="number" min="0" max="40" step="0.5" value="10" /></div>
+    <button class="btn go" id="go">Plan it</button>
+    <button class="btn" id="fetch">Use forecast (Open-Meteo)</button>
+    <div class="fxnote" id="fxnote">Enter a wind, or pull the venue's live forecast. Works offline with a manual wind.</div>
+  </div>
+
+  <div class="grp">Pre-start call</div>
+  <div class="prestart" id="prestart"></div>
+
+  <div class="grp">The plan</div>
+  <div class="plan" id="plan"></div>
+
+  <div class="grp">Who's catchable at this wind (ORC corrected time)</div>
+  <div id="catch"></div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script type="module">
+//__ENGINE__//
+//__DATA__//
+
+const $ = (s) => document.querySelector(s);
+const VENUES = Array.isArray(DATA) ? DATA : [DATA];
+const LJ = BOATS.boats.find((b) => b.id === 'lj');
+const RIVALS = BOATS.boats.filter((b) => b.id !== 'lj');
+const GRID = [6, 8, 10, 12, 14, 16, 20];
+const SYS = 'ORC';   // the library's full-data basis; per Principle 7 we default it and don't clutter with a toggle
+let cur = VENUES[0];
+
+// corrected-time margin of LJ vs a rival over a canonical W/L (beat+run) at wind w — reuses the audited engine
+function marginAt(rival, w) {
+  const legs = [
+    { distanceNm: 1, speedLJ: polarSpeed(LJ, 'beat', w, GRID), speedRival: polarSpeed(rival, 'beat', w, GRID) },
+    { distanceNm: 1, speedLJ: polarSpeed(LJ, 'run', w, GRID), speedRival: polarSpeed(rival, 'run', w, GRID) },
+  ];
+  return courseMargin(LJ, rival, { legs, systemId: SYS, courseType: 'windward_leeward', tws: w });
+}
+// wind (6–20) at which LJ's margin crosses zero → "beats below X kt"
+function breakEvenKt(rival) {
+  let prev = null;
+  for (let w = 6; w <= 20.001; w += 0.5) {
+    const m = marginAt(rival, w);
+    if (m.status !== 'ok') { prev = null; continue; }
+    if (prev != null && (prev >= 0) !== (m.pct >= 0)) return w;
+    prev = m.pct;
+  }
+  return null;
+}
+
+function compute() {
+  const dir = Number($('#dir').value), spd = Number($('#spd').value);
+  const match = matchPattern(cur.wind_climatology.patterns, dir);
+  const conf = planConfidence(match ? match.offDeg : 999, spd);
+
+  // catchable list (rivals with a rating + polar in this basis/wind)
+  const rows = [];
+  for (const r of RIVALS) {
+    const m = marginAt(r, spd);
+    if (m.status !== 'ok') { rows.push({ name: r.name, status: m.status }); continue; }
+    rows.push({ name: r.name, pct: m.pct, tier: catchTier(m.pct), be: breakEvenKt(r) });
+  }
+  const ok = rows.filter((r) => r.tier);
+  ok.sort((a, b) => b.pct - a.pct);
+
+  // ---- pre-start call (moment 3) ----
+  const ps = $('#prestart');
+  ps.className = 'prestart ' + (conf === 'high' ? 'good' : conf === 'medium' ? 'warn' : 'bad');
+  const call = preStartCall(match, ok.map((r) => ({ name: r.name, pct: r.pct, tier: r.tier })));
+  ps.innerHTML = `<div class="l1">${call}<span class="chip ${conf}">${conf} confidence</span></div>`
+    + `<div class="l2">${match ? `${match.pattern.name} · wind from ${dir}° (${match.offDeg}° off pattern) · ${spd} kt` : 'no matching wind pattern'}`
+    + `${spd < 6 ? ' — <b style="color:#ff9a8b">light air &lt; 6 kt: corrected-time is unreliable; trust the shore call + your light-air upwind edge.</b>' : ''}</div>`;
+
+  // ---- the plan (moment 2) ----
+  $('#plan').innerHTML = match ? `<div class="pn">${match.pattern.name} <span style="color:#8aa0b4">· ${match.pattern.dir}</span></div>`
+    + `<div style="margin-top:4px">${match.pattern.character || ''}</div>`
+    + `<div style="margin-top:6px">Favoured side: <span class="side">${match.pattern.favoured_side || '—'}</span></div>`
+    + `<div style="margin-top:4px;color:#cfe0ef"><b>Tactics:</b> ${match.pattern.tactics || ''}</div>`
+    : `<div>No climatology pattern matches ${dir}°. Enter the closest prevailing direction.</div>`;
+
+  // ---- catchable table ----
+  const trow = (r) => r.tier
+    ? `<tr><td>${r.name}</td><td class="num t-${r.tier}">${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(1)}%</td>`
+      + `<td class="t-${r.tier}">${r.tier}</td><td>${r.be ? 'you beat below ~' + r.be.toFixed(1) + ' kt' : (r.pct >= 0 ? 'beat across the range' : 'lose across the range')}</td></tr>`
+    : `<tr><td>${r.name}</td><td class="num" style="color:#6f889e">—</td><td style="color:#6f889e">no ${SYS} data</td><td></td></tr>`;
+  const order = [...ok, ...rows.filter((r) => !r.tier)];
+  $('#catch').innerHTML = `<table><thead><tr><th>Boat</th><th>Corrected margin</th><th>Today</th><th>Break-even</th></tr></thead><tbody>${order.map(trow).join('')}</tbody></table>`;
+
+  $('#foot').innerHTML = `Corrected margin = LJ vs each boat over a beat+run at ${spd} kt on the <b>ORC</b> basis (+ = LJ wins). `
+    + `Pattern &amp; favoured side from the venue's wind climatology; a big "° off pattern" or light air lowers confidence. `
+    + `The pre-start call is the 20-second version; the plan and table are the why.`;
+
+  document.querySelectorAll('#vpick .vp').forEach((el) => el.classList.toggle('sel', el.dataset.id === cur.id));
+}
+
+// ---- Open-Meteo forecast (optional; manual wind is the offline baseline) ----
+const circMean = (degs) => {
+  let x = 0, y = 0; for (const d of degs) { x += Math.cos(d * Math.PI / 180); y += Math.sin(d * Math.PI / 180); }
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+};
+async function fetchForecast() {
+  const c = cur.course && cur.course.start;
+  if (!c) { $('#fxnote').textContent = 'No coordinates for this venue.'; return; }
+  $('#fxnote').textContent = 'Fetching forecast…';
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&hourly=wind_speed_10m,wind_direction_10m&wind_speed_unit=kn&forecast_days=7&timezone=auto`;
+    const j = await (await fetch(url)).json();
+    const T = j.hourly.time, S = j.hourly.wind_speed_10m, D = j.hourly.wind_direction_10m;
+    // nearest upcoming Saturday's daytime (09–17), else the next available daytime window
+    let idx = [];
+    for (let sat = 0; sat < 7 && !idx.length; sat++) {
+      idx = T.map((t, i) => i).filter((i) => { const dt = new Date(T[i]); const h = dt.getHours(); return dt.getDay() === 6 && h >= 9 && h <= 17; });
+    }
+    if (!idx.length) idx = T.map((t, i) => i).filter((i) => { const h = new Date(T[i]).getHours(); return h >= 9 && h <= 17; }).slice(0, 9);
+    const sp = idx.map((i) => S[i]).filter((x) => x != null), dr = idx.map((i) => D[i]).filter((x) => x != null);
+    if (!sp.length) throw new Error('no hours');
+    const avgSpd = sp.reduce((a, b) => a + b, 0) / sp.length, avgDir = circMean(dr);
+    $('#dir').value = Math.round(avgDir); $('#spd').value = avgSpd.toFixed(1);
+    const day = new Date(T[idx[0]]); $('#fxnote').textContent = `Open-Meteo: ${day.toDateString()} 09–17h avg ≈ ${Math.round(avgDir)}° / ${avgSpd.toFixed(1)} kt.`;
+    compute();
+  } catch (e) { $('#fxnote').textContent = 'Forecast fetch failed (offline or blocked) — enter the wind manually.'; }
+}
+
+// venue switcher + wiring
+$('#vpick').innerHTML = VENUES.map((v) => `<span class="vp" data-id="${v.id}">${v.name}</span>`).join('');
+document.querySelectorAll('#vpick .vp').forEach((el) => el.addEventListener('click', () => { cur = VENUES.find((v) => v.id === el.dataset.id); compute(); }));
+$('#go').addEventListener('click', compute);
+$('#fetch').addEventListener('click', fetchForecast);
+$('#dir').addEventListener('keydown', (e) => { if (e.key === 'Enter') compute(); });
+$('#spd').addEventListener('keydown', (e) => { if (e.key === 'Enter') compute(); });
+compute();
+</script>
+</body>
+</html>

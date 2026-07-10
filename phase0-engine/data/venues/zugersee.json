@@ -43,28 +43,36 @@
     "dir": "NE (down the long axis)",
     "when": "cold high-pressure NE; the classic working breeze",
     "character": "Channels down the NE–SW axis and ACCELERATES through the Chiemen narrows into the Obersee. Steady, shifts on cycles.",
-    "tactics": "Stay in the corridor down the axis; the broad Untersee holds the cleanest Bise; expect a lift / pressure bump at the narrows."
+    "tactics": "Stay in the corridor down the axis; the broad Untersee holds the cleanest Bise; expect a lift / pressure bump at the narrows.",
+    "bearing": 45,
+    "favoured_side": "Untersee / Cham (N) side"
    },
    {
     "name": "West / WSW",
     "dir": "W–SW (prevailing)",
     "when": "the prevailing wind; clean off the flat open NW (Cham)",
     "character": "Clean in the Untersee. In the Obersee the Rigi casts a wind shadow over the west (Immensee) shore.",
-    "tactics": "Untersee: anywhere clean. Obersee: favour mid-lake / east side for pressure; avoid parking under the Rigi on the W shore."
+    "tactics": "Untersee: anywhere clean. Obersee: favour mid-lake / east side for pressure; avoid parking under the Rigi on the W shore.",
+    "bearing": 250,
+    "favoured_side": "work the west-shore pressure line"
    },
    {
     "name": "Föhn",
     "dir": "S / SE fall-wind",
     "when": "föhn conditions; warm, strong, gusty",
     "character": "Hits the Obersee (south) first and hardest over the Rossberg/Rigi gap toward Arth/Immensee.",
-    "tactics": "The south end (Arth/Obersee) has the breeze; the Untersee is usually lighter. Reef early; respect the gusts."
+    "tactics": "The south end (Arth/Obersee) has the breeze; the Untersee is usually lighter. Reef early; respect the gusts.",
+    "bearing": 180,
+    "favoured_side": "Obersee / Arth (S) end — gusty, stay loose"
    },
    {
     "name": "Thermal / lake breeze",
     "dir": "variable",
     "when": "sunny light days — the most common mode (~3 kt avg)",
     "character": "Hills heat vs the lake and drive an afternoon breeze; evenings fill from the Obersee.",
-    "tactics": "Follow the building breeze, often mid-lake; it strengthens through the afternoon. An evening beat south from Immensee can pay (YCI)."
+    "tactics": "Follow the building breeze, often mid-lake; it strengthens through the afternoon. An evening beat south from Immensee can pay (YCI).",
+    "bearing": 200,
+    "favoured_side": "follow the filling thermal up the long axis"
    }
   ]
  },
