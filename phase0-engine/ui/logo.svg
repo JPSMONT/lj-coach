@@ -1,0 +1,13 @@
+<svg width="2400" height="1400" viewBox="0 0 2400 1400" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .title { font: 900 220px Arial, sans-serif; }
+    .mid { font: 900 180px Arial, sans-serif; }
+    .small { font: 900 100px Arial, sans-serif; }
+  </style>
+  <text x="250" y="420" fill="rgb(220,0,0)" class="title">LITTLE</text>
+  <text x="240" y="700" fill="rgb(10,15,20)" class="mid">JOHNKA</text>
+  <text x="1180" y="860" fill="rgb(10,15,20)" class="small">SUI 6116</text>
+  <line x1="1650" y1="180" x2="1100" y2="1180" stroke="rgba(200,200,200,0.7)" stroke-width="20"/>
+  <line x1="1730" y1="250" x2="1180" y2="1250" stroke="rgba(220,0,0,0.7)" stroke-width="12"/>
+  <line x1="1810" y1="320" x2="1260" y2="1320" stroke="rgba(180,180,180,0.5)" stroke-width="6"/>
+</svg>
