@@ -104,10 +104,14 @@ function compute() {
   const match = matchPattern(cur.wind_climatology.patterns, dir);
   const conf = planConfidence(match ? match.offDeg : 999, spd);
 
+  // below 6 kt the ORC polar has no data — compare at the nearest scoreable wind (6 kt, LJ's lightest & strongest)
+  const belowFloor = !(spd >= 6);
+  const scoreTws = belowFloor ? 6 : spd;
+
   // catchable list (rivals with a rating + polar in this basis/wind)
   const rows = [];
   for (const r of RIVALS) {
-    const m = marginAt(r, spd);
+    const m = marginAt(r, scoreTws);
     if (m.status !== 'ok') { rows.push({ name: r.name, status: m.status }); continue; }
     rows.push({ name: r.name, pct: m.pct, tier: catchTier(m.pct), be: breakEvenKt(r) });
   }
@@ -119,8 +123,8 @@ function compute() {
   ps.className = 'prestart ' + (conf === 'high' ? 'good' : conf === 'medium' ? 'warn' : 'bad');
   const call = preStartCall(match, ok.map((r) => ({ name: r.name, pct: r.pct, tier: r.tier })));
   ps.innerHTML = `<div class="l1">${call}<span class="chip ${conf}">${conf} confidence</span></div>`
-    + `<div class="l2">${match ? `${match.pattern.name} · wind from ${dir}° (${match.offDeg}° off pattern) · ${spd} kt` : 'no matching wind pattern'}`
-    + `${spd < 6 ? ' — <b style="color:#ff9a8b">light air &lt; 6 kt: corrected-time is unreliable; trust the shore call + your light-air upwind edge.</b>' : ''}</div>`;
+    + `<div class="l2">${match ? `${match.pattern.name} · wind from ${dir}° (${match.offDeg}° off pattern) · ${Number.isFinite(spd) ? spd : '—'} kt` : 'no matching wind pattern'}`
+    + `${belowFloor ? ' — <b style="color:#ff9a8b">light air &lt; 6 kt: corrected-time is unreliable; trust the shore call + your light-air upwind edge.</b>' : ''}</div>`;
 
   // ---- the plan (moment 2) ----
   $('#plan').innerHTML = match ? `<div class="pn">${match.pattern.name} <span style="color:#8aa0b4">· ${match.pattern.dir}</span></div>`
@@ -137,7 +141,8 @@ function compute() {
   const order = [...ok, ...rows.filter((r) => !r.tier)];
   $('#catch').innerHTML = `<table><thead><tr><th>Boat</th><th>Corrected margin</th><th>Today</th><th>Break-even</th></tr></thead><tbody>${order.map(trow).join('')}</tbody></table>`;
 
-  $('#foot').innerHTML = `Corrected margin = LJ vs each boat over a beat+run at ${spd} kt on the <b>ORC</b> basis (+ = LJ wins). `
+  $('#foot').innerHTML = `Corrected margin = LJ vs each boat over a beat+run at ${scoreTws} kt on the <b>ORC</b> basis (+ = LJ wins).`
+    + `${belowFloor ? ` <b style="color:#f0d97a">Forecast ${Number.isFinite(spd) ? spd : '—'} kt is below the 6 kt polar floor — margins shown at 6 kt, LJ's lightest scoreable (and strongest) wind.</b>` : ''} `
     + `Pattern &amp; favoured side from the venue's wind climatology; a big "° off pattern" or light air lowers confidence. `
     + `The pre-start call is the 20-second version; the plan and table are the why.`;
 

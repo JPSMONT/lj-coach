@@ -44,7 +44,8 @@
 </style>
 <style>/* injected by build.mjs — shared nav */
 .ljnav{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:2px;padding:8px 14px;background:#0b1622;border-bottom:1px solid #23384e;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-.ljnav .brand{font-weight:800;font-size:13px;color:#ff5a3c;margin-right:12px;letter-spacing:.3px;white-space:nowrap}
+.ljnav .brand{display:inline-flex;align-items:center;background:#fff;border-radius:7px;padding:3px 8px;margin-right:12px}
+.ljnav .brand img{height:22px;display:block}
 .ljnav a{color:#9fb4c8;text-decoration:none;font-size:13px;font-weight:700;padding:6px 12px;border-radius:8px}
 .ljnav a:hover{background:#16273a;color:#eaf1f7}
 .ljnav a.active{background:#16273a;color:#eaf1f7;box-shadow:inset 0 -2px 0 #ff5a3c}
@@ -57,7 +58,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" /><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 </head>
 <body>
-<nav class="ljnav"><span class="brand">⛵ LJ Coach</span><a href="compare.html">Compare</a><a href="venue.html">Venue</a><a href="plan.html" class="active">Plan</a><a href="cockpit.html">Cockpit</a><a href="debrief.html">Debrief</a><a href="trimlab.html">Trim Lab</a></nav>
+<nav class="ljnav"><a href="index.html" class="brand"><img src="logo.png" alt="Little Johnka — SUI 6116" /></a><a href="compare.html">Compare</a><a href="venue.html">Venue</a><a href="plan.html" class="active">Plan</a><a href="cockpit.html">Cockpit</a><a href="debrief.html">Debrief</a><a href="trimlab.html">Trim Lab</a></nav>
 <div class="wrap">
   <h1 id="title">Plan</h1>
   <div class="sub">For this venue and today's wind: which shore to take, who's catchable on corrected time, and the pre-start call. Decision first — the reasoning is below it.</div>
@@ -4090,10 +4091,14 @@ function compute() {
   const match = matchPattern(cur.wind_climatology.patterns, dir);
   const conf = planConfidence(match ? match.offDeg : 999, spd);
 
+  // below 6 kt the ORC polar has no data — compare at the nearest scoreable wind (6 kt, LJ's lightest & strongest)
+  const belowFloor = !(spd >= 6);
+  const scoreTws = belowFloor ? 6 : spd;
+
   // catchable list (rivals with a rating + polar in this basis/wind)
   const rows = [];
   for (const r of RIVALS) {
-    const m = marginAt(r, spd);
+    const m = marginAt(r, scoreTws);
     if (m.status !== 'ok') { rows.push({ name: r.name, status: m.status }); continue; }
     rows.push({ name: r.name, pct: m.pct, tier: catchTier(m.pct), be: breakEvenKt(r) });
   }
@@ -4105,8 +4110,8 @@ function compute() {
   ps.className = 'prestart ' + (conf === 'high' ? 'good' : conf === 'medium' ? 'warn' : 'bad');
   const call = preStartCall(match, ok.map((r) => ({ name: r.name, pct: r.pct, tier: r.tier })));
   ps.innerHTML = `<div class="l1">${call}<span class="chip ${conf}">${conf} confidence</span></div>`
-    + `<div class="l2">${match ? `${match.pattern.name} · wind from ${dir}° (${match.offDeg}° off pattern) · ${spd} kt` : 'no matching wind pattern'}`
-    + `${spd < 6 ? ' — <b style="color:#ff9a8b">light air &lt; 6 kt: corrected-time is unreliable; trust the shore call + your light-air upwind edge.</b>' : ''}</div>`;
+    + `<div class="l2">${match ? `${match.pattern.name} · wind from ${dir}° (${match.offDeg}° off pattern) · ${Number.isFinite(spd) ? spd : '—'} kt` : 'no matching wind pattern'}`
+    + `${belowFloor ? ' — <b style="color:#ff9a8b">light air &lt; 6 kt: corrected-time is unreliable; trust the shore call + your light-air upwind edge.</b>' : ''}</div>`;
 
   // ---- the plan (moment 2) ----
   $('#plan').innerHTML = match ? `<div class="pn">${match.pattern.name} <span style="color:#8aa0b4">· ${match.pattern.dir}</span></div>`
@@ -4123,7 +4128,8 @@ function compute() {
   const order = [...ok, ...rows.filter((r) => !r.tier)];
   $('#catch').innerHTML = `<table><thead><tr><th>Boat</th><th>Corrected margin</th><th>Today</th><th>Break-even</th></tr></thead><tbody>${order.map(trow).join('')}</tbody></table>`;
 
-  $('#foot').innerHTML = `Corrected margin = LJ vs each boat over a beat+run at ${spd} kt on the <b>ORC</b> basis (+ = LJ wins). `
+  $('#foot').innerHTML = `Corrected margin = LJ vs each boat over a beat+run at ${scoreTws} kt on the <b>ORC</b> basis (+ = LJ wins).`
+    + `${belowFloor ? ` <b style="color:#f0d97a">Forecast ${Number.isFinite(spd) ? spd : '—'} kt is below the 6 kt polar floor — margins shown at 6 kt, LJ's lightest scoreable (and strongest) wind.</b>` : ''} `
     + `Pattern &amp; favoured side from the venue's wind climatology; a big "° off pattern" or light air lowers confidence. `
     + `The pre-start call is the 20-second version; the plan and table are the why.`;
 

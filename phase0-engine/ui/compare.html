@@ -66,7 +66,8 @@
 </style>
 <style>/* injected by build.mjs — shared nav */
 .ljnav{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:2px;padding:8px 14px;background:#0b1622;border-bottom:1px solid #23384e;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-.ljnav .brand{font-weight:800;font-size:13px;color:#ff5a3c;margin-right:12px;letter-spacing:.3px;white-space:nowrap}
+.ljnav .brand{display:inline-flex;align-items:center;background:#fff;border-radius:7px;padding:3px 8px;margin-right:12px}
+.ljnav .brand img{height:22px;display:block}
 .ljnav a{color:#9fb4c8;text-decoration:none;font-size:13px;font-weight:700;padding:6px 12px;border-radius:8px}
 .ljnav a:hover{background:#16273a;color:#eaf1f7}
 .ljnav a.active{background:#16273a;color:#eaf1f7;box-shadow:inset 0 -2px 0 #ff5a3c}
@@ -79,7 +80,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" /><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 </head>
 <body>
-<nav class="ljnav"><span class="brand">⛵ LJ Coach</span><a href="compare.html" class="active">Compare</a><a href="venue.html">Venue</a><a href="plan.html">Plan</a><a href="cockpit.html">Cockpit</a><a href="debrief.html">Debrief</a><a href="trimlab.html">Trim Lab</a></nav>
+<nav class="ljnav"><a href="index.html" class="brand"><img src="logo.png" alt="Little Johnka — SUI 6116" /></a><a href="compare.html" class="active">Compare</a><a href="venue.html">Venue</a><a href="plan.html">Plan</a><a href="cockpit.html">Cockpit</a><a href="debrief.html">Debrief</a><a href="trimlab.html">Trim Lab</a></nav>
 <div class="wrap">
   <h1>Little Johnka · Corrected-Time Compare</h1>
   <div class="sub" id="intro"></div>
