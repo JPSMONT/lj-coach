@@ -45,6 +45,11 @@
 .ljnav a.active{background:#16273a;color:#eaf1f7;box-shadow:inset 0 -2px 0 #ff5a3c}
 @media(max-width:520px){.ljnav .brand{display:none}.ljnav a{padding:6px 9px;font-size:12px}}
 </style>
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#0b1622" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<meta name="apple-mobile-web-app-capable" content="yes" /><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 </head>
 <body>
 <nav class="ljnav"><span class="brand">⛵ LJ Coach</span><a href="compare.html">Compare</a><a href="venue.html">Venue</a><a href="plan.html">Plan</a><a href="cockpit.html">Cockpit</a><a href="debrief.html" class="active">Debrief</a><a href="trimlab.html">Trim Lab</a></nav>
@@ -3115,5 +3120,6 @@ renderPos('#posmod', DATA.byPointModelled, true);
 
 $('#caveats').innerHTML=DATA.caveats.map(c=>`<li>${c}</li>`).join('');
 </script>
+<script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}</script>
 </body>
 </html>

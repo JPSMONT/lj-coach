@@ -1,0 +1,17 @@
+{
+  "name": "LJ Coach — Little Johnka",
+  "short_name": "LJ Coach",
+  "description": "Corrected-time compare, race plan, live cockpit and debrief for Little Johnka (SUI 6116).",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f1c2b",
+  "theme_color": "#0b1622",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon.svg", "type": "image/svg+xml", "sizes": "any" }
+  ]
+}

@@ -68,6 +68,12 @@ const NAV_CSS = `<style>/* injected by build.mjs — shared nav */
 const navBar = (active) => `<nav class="ljnav"><span class="brand">⛵ LJ Coach</span>`
   + NAV_TABS.map(([h, l]) => `<a href="${h}"${h === active ? ' class="active"' : ''}>${l}</a>`).join('') + `</nav>`;
 
+// PWA: installable + offline. Manifest + icons in <head>, service-worker registration before </body>.
+const PWA_HEAD = `<link rel="manifest" href="manifest.webmanifest" />\n<meta name="theme-color" content="#0b1622" />`
+  + `\n<link rel="apple-touch-icon" href="icon-180.png" />\n<link rel="icon" href="icon.svg" type="image/svg+xml" />`
+  + `\n<meta name="apple-mobile-web-app-capable" content="yes" /><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />`;
+const SW_REG = `<script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}</script>`;
+
 for (const t of TARGETS) {
   let out = read(t.template)
     .replace('//__ENGINE__//', () => bundle(t.modules))
@@ -80,7 +86,7 @@ for (const t of TARGETS) {
   // inject shared nav (CSS in <head>, bar right after <body>) — active tab = this page's filename
   const active = t.out.split('/').pop();
   if (!out.includes('</head>') || !out.includes('<body>')) throw new Error(`build: no </head>/<body> to inject nav in ${t.template}`);
-  out = out.replace('</head>', `${NAV_CSS}\n</head>`).replace('<body>', `<body>\n${navBar(active)}`);
+  out = out.replace('</head>', `${NAV_CSS}\n${PWA_HEAD}\n</head>`).replace('<body>', `<body>\n${navBar(active)}`).replace('</body>', `${SW_REG}\n</body>`);
   writeFileSync(join(root, t.out), out);
   console.log(`${t.out} written (${out.length} bytes) — modules: ${t.modules.join(', ')}`);
 }
