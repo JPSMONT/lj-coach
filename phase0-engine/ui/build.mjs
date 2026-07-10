@@ -59,8 +59,8 @@ const TARGETS = [
 const NAV_TABS = [['compare.html', 'Compare'], ['venue.html', 'Venue'], ['plan.html', 'Plan'], ['cockpit.html', 'Cockpit'], ['debrief.html', 'Debrief'], ['trimlab.html', 'Trim Lab']];
 const NAV_CSS = `<style>/* injected by build.mjs — shared nav */
 .ljnav{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:2px;padding:8px 14px;background:#0b1622;border-bottom:1px solid #23384e;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-.ljnav .brand{display:inline-flex;align-items:center;background:#fff;border-radius:7px;padding:3px 8px;margin-right:12px}
-.ljnav .brand img{height:20px;display:block}
+.ljnav .brand{display:inline-flex;align-items:center;background:#fff;border-radius:6px;padding:3px 7px;margin-right:14px}
+.ljnav .brand img{height:14px;display:block}
 .ljnav a{color:#9fb4c8;text-decoration:none;font-size:13px;font-weight:700;padding:6px 12px;border-radius:8px}
 .ljnav a:hover{background:#16273a;color:#eaf1f7}
 .ljnav a.active{background:#16273a;color:#eaf1f7;box-shadow:inset 0 -2px 0 #ff5a3c}
@@ -71,7 +71,7 @@ const navBar = (active) => `<nav class="ljnav"><a href="index.html" class="brand
 
 // PWA: installable + offline. Manifest + icons in <head>, service-worker registration before </body>.
 const PWA_HEAD = `<link rel="manifest" href="manifest.webmanifest" />\n<meta name="theme-color" content="#0b1622" />`
-  + `\n<link rel="apple-touch-icon" href="icon-180.png" />\n<link rel="icon" href="icon.svg" type="image/svg+xml" />`
+  + `\n<link rel="apple-touch-icon" href="icon-180.png" />\n<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png" />\n<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />`
   + `\n<meta name="apple-mobile-web-app-capable" content="yes" /><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />`;
 const SW_REG = `<script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}</script>`;
 
