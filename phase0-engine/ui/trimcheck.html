@@ -62,6 +62,10 @@
   .reading b{color:#eaf1f7}.reading .fwd{color:#7ec8ff}.reading .aft{color:#ffb27a}.reading .on{color:#7ee0a8}
   .reading .h{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#8aa0b4;font-weight:800;margin-bottom:5px}
   .reading .row{margin-top:7px}
+  .saverow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+  .saverow .sv{padding:9px 13px}
+  .saverow .sv.fast{border-color:#2aa06a;color:#7ee0a8}.saverow .sv.slow{border-color:#e0c34a;color:#f0d97a}
+  #libnote{font-size:12px;color:#9fb4c8}
   details{margin-top:10px}summary{cursor:pointer;color:#9fb4c8;font-size:13px;font-weight:700}
   table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
   th{text-align:left;color:#8aa0b4;font-size:10px;text-transform:uppercase;border-bottom:1px solid #2c435a;padding:5px 6px}
@@ -175,6 +179,13 @@
   <!-- ===== RESULT ===== -->
   <div class="decision groove hide" id="decision"></div>
   <div id="reading" class="reading hide"></div>
+  <div id="saverow" class="saverow hide">
+    <span style="font-size:12.5px;color:#cfe0ef;font-weight:700">Was this fast?</span>
+    <button class="btn sv fast" data-v="fast">✓ Fast</button>
+    <button class="btn sv slow" data-v="slow">✗ Slow</button>
+    <button class="btn sv" data-v="">Just save</button>
+    <span id="libnote"></span>
+  </div>
   <details id="shapeDisc" class="hide"><summary>Show shape numbers</summary><div id="shape"></div><div class="cap" id="foot" style="text-align:left"></div></details>
 </div>
 
@@ -640,6 +651,44 @@ function calibrate(stripesImg, geom) {
   return H ? { H, warp: (p) => applyH(H, p) } : null;
 }
 
+/* ---- inlined from src/target-library.mjs ---- */
+// target-library.mjs — build Little Johnka's OWN trim targets from saved fast shapes. Instead of the
+// textbook bands, once you have enough shapes you flagged FAST in a wind band, the target for that band
+// becomes the median of your fast shapes. Pure; the UI persists the entries (localStorage) and passes
+// the result to diagnose() as `personal` (resolveTarget picks it over the literature default).
+//
+// Entry shape (one saved reading): { ts, sailId, band, tws, depthPct, draftPct, twistDeg, mode, verdict }
+// verdict ∈ 'fast' | 'slow' | ''.  band matches trim-diagnose windBand (<6 light, ≤14 medium, else heavy).
+
+const BANDS = ['light', 'medium', 'heavy'];
+function bandOf(tws) { return !(tws >= 0) ? null : tws < 6 ? 'light' : tws <= 14 ? 'medium' : 'heavy'; }
+function median(xs) { const s = [...xs].sort((a, b) => a - b), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : null; }
+
+// Personal targets from the fast entries, once a band has ≥ minN of them. Returns { band: {depth:[lo,hi],
+// draft:[lo,hi], twist, twistTol, source:'personal', n} } — the shape resolveTarget/diagnose expect.
+function personalTargets(entries, minN = 3) {
+  const out = {};
+  for (const b of BANDS) {
+    const fast = (entries || []).filter((e) => e.verdict === 'fast' && e.band === b && e.draftPct != null);
+    if (fast.length < minN) continue;
+    const md = Math.round(median(fast.map((e) => e.draftPct)));
+    const dp = Math.round(median(fast.map((e) => e.depthPct)));
+    const tw = Math.round(median(fast.map((e) => Math.abs(e.twistDeg))));
+    out[b] = { draft: [md - 2, md + 2], depth: [dp - 1, dp + 1], twist: tw, twistTol: 3, source: 'personal', n: fast.length };
+  }
+  return out;
+}
+
+// Per-band counts for the small library readout.
+function librarySummary(entries) {
+  const s = {};
+  for (const b of BANDS) {
+    const inB = (entries || []).filter((e) => e.band === b);
+    s[b] = { fast: inB.filter((e) => e.verdict === 'fast').length, total: inB.length };
+  }
+  return s;
+}
+
 /* ---- inlined from data/sail-lj-main.json ---- */
 const DATA = {
   "id": "lj-main",
@@ -676,6 +725,10 @@ const MODES = {
   slot: { targets: [['jibLo', 'jib leech — low'], ['jibHi', 'jib leech — high'], ['mainLo', 'main leech — low'], ['mainHi', 'main leech — high']] },
 };
 let mode = 'main', active = 's1', pts = {}, img = null, gray = null, rgbaBuf = null, luffSide = 'left', lastSource = 'file', analyzedOnce = false, overlay = null;
+let trimLib = [], lastEntry = null;                            // personal fast-shape library (persisted in localStorage)
+const LIBKEY = 'lj-trimlib-v1';
+function loadLib() { try { trimLib = JSON.parse(localStorage.getItem(LIBKEY) || '[]') || []; } catch (e) { trimLib = []; } }
+function saveLib() { try { localStorage.setItem(LIBKEY, JSON.stringify(trimLib)); } catch (e) {} }
 const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
 function resetPoints() { pts = {}; for (const m of Object.values(MODES)) for (const [k] of m.targets) pts[k] = []; active = MODES[mode].targets[0][0]; analyzedOnce = false; }
 resetPoints();
@@ -746,7 +799,7 @@ function useImage(im, source) {
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   rgbaBuf = ctx.getImageData(0, 0, canvas.width, canvas.height).data;   // kept for the sail colour gate
   gray = toGray(rgbaBuf, canvas.width, canvas.height);
-  resetPoints(); anchorA = null; overlay = null; $('#legend').innerHTML = ''; draw(); flipLabel(); show('review'); status();
+  resetPoints(); anchorA = null; overlay = null; $('#legend').innerHTML = ''; $('#reading').classList.add('hide'); $('#saverow').classList.add('hide'); draw(); flipLabel(); show('review'); status();
 }
 $('#importLink').addEventListener('click', () => $('#file').click());
 $('#file').addEventListener('change', (e) => {
@@ -909,27 +962,31 @@ function analyzeMain() {
     warp = null; shape = analyzeShot({ luff: luffPt, stripes });
   }
   const cond = conditions();
-  const dx = diagnose(shape, { tws: cond.tws == null ? undefined : cond.tws });
+  const personal = personalTargets(trimLib);                   // YOUR fast-shape targets per band (if enough saved)
+  const dx = diagnose(shape, { tws: cond.tws == null ? undefined : cond.tws }, personal);
   const h = dx.headline;
   showDecision(h.score ? 'act' : 'groove', h.action, h.control !== '—' ? `Pull: <b>${h.control}</b>. ${h.why || ''}` : '', dx.caveats,
     dx.others.length ? 'Also: ' + dx.others.map((o) => o.action.toLowerCase()).join('; ') + '.' : '');
   renderShape(shape, dx, cond);
-  // on-image shape overlay: shade each camber pocket green (depth on target for the wind) or amber (off)
-  // Evidence-based readout (North U / SAIL / Speed & Smarts): draft POSITION is the key stripe number.
-  // Show each stripe in its own colour: shaded camber pocket + chord, the deepest point (where draft IS),
-  // and a neutral reference tick at the book target (where it SHOULD be) — no green/amber verdict.
-  const tgt = literatureTarget(dx.band === 'unknown' ? 'medium' : dx.band);
+  // draft mean for the library entry + target reference
+  const draftMean = Math.round(shape.stripes.reduce((a, s) => a + s.draftPosPct, 0) / shape.stripes.length);
+  lastEntry = { ts: Date.now(), sailId: 'main', band: dx.band, tws: cond.tws, depthPct: shape.depthMidPct, draftPct: draftMean, twistDeg: shape.twistProfileDeg, mode: shape.mode };
+  // Evidence-based readout: draft POSITION is the key stripe number. Target = YOUR fast shapes if available,
+  // else the textbook band. Deepest point (draft IS) vs a reference tick (draft SHOULD).
+  const tgt = resolveTarget(dx.band === 'unknown' ? 'medium' : dx.band, personal);
   const targetDraft = (tgt.draft[0] + tgt.draft[1]) / 2;
   const absolute = shape.mode === 'absolute';
   overlay = shape.stripes.map((st, i) => ({ seeds: pts[usedKeys[i]], draftPosPct: st.draftPosPct, depthPct: st.depthPct, absolute, color: COLORS[usedKeys[i]] || '#fff', targetDraft }));
-  $('#legend').innerHTML = `<b>White dot</b> = deepest point (draft position) · <b>white tick</b> = book target ≈${Math.round(targetDraft)}% aft (${dx.band} air) · shaded = camber. `
+  const tgtLabel = dx.targetSource === 'personal' ? `<b style="color:#7ee0a8">your fast-shape target</b>` : 'book target';
+  $('#legend').innerHTML = `<b>White dot</b> = deepest point (draft position) · <b>white tick</b> = ${tgtLabel} ≈${Math.round(targetDraft)}% aft (${dx.band} air) · shaded = camber. `
     + (absolute ? `Camber is <b style="color:#7ee0a8">calibrated to the sail's design planform</b> (absolute).` : `Camber is <b>~approximate</b> (relative — sail geometry not loaded).`);
-  $('#reading').innerHTML = explain(shape, dx, conditions()); $('#reading').classList.remove('hide');
+  $('#reading').innerHTML = explain(shape, dx, cond, tgt); $('#reading').classList.remove('hide');
+  $('#saverow').classList.remove('hide'); updateLibNote();
   draw();
 }
 // Plain-language, evidence-based readout (what the numbers say + the advice + a teaching line).
-function explain(shape, dx, cond) {
-  const tgt = literatureTarget(dx.band === 'unknown' ? 'medium' : dx.band);
+function explain(shape, dx, cond, tgt) {
+  tgt = tgt || literatureTarget(dx.band === 'unknown' ? 'medium' : dx.band);
   const tc = Math.round((tgt.draft[0] + tgt.draft[1]) / 2);
   // Read each height, don't average: the MID stripe is the reference number (sailmakers / VSPARS / North
   // Scan quote mid-girth); position should be ~constant up the sail; depth should taper fuller-low→flatter-high.
@@ -948,13 +1005,13 @@ function explain(shape, dx, cond) {
   const twist = Math.abs(shape.twistProfileDeg);
   const twistLine = twist > tgt.twist + tgt.twistTol ? `Top is <b>twisted open</b> (${twist}°) — spilling power up high; sheet on / lead forward to point, or leave it in the gusts.`
     : twist < tgt.twist - tgt.twistTol ? `Top is <b>closed</b> (${twist}°) — powered but can stall; ease sheet / lead aft for flow.` : `Twist ${twist}° — about right for ${dx.band} air.`;
-  return `<div class="h">Reading — ${dx.band} air, ${twsTxt}</div>`
+  return `<div class="h">Reading — ${dx.band} air, ${twsTxt} · target: ${dx.targetSource === 'personal' ? 'your fast shapes' : 'textbook'}</div>`
     + `<div>${draftLine}</div>`
     + `<div class="row">${consLine} ${taperLine} ${twistLine}</div>`
     + `<div class="row" style="color:#8aa0b4"><b>Read each height, don't average:</b> <b>outhaul</b> shapes the low camber, <b>mast bend / backstay</b> flatten the top &amp; open the leech, <b>luff / cunningham</b> set draft position (≈constant up the sail), <b>sheet / vang / traveller</b> set twist. Draft % is measured aft of the <b>luff</b> — set the Luff button to the mast side. Targets are <b>upwind</b>.</div>`;
 }
 function analyzeSlot() {
-  overlay = null; $('#legend').innerHTML = ''; $('#reading').classList.add('hide'); draw();  // camber overlay is main-mode only
+  overlay = null; $('#legend').innerHTML = ''; $('#reading').classList.add('hide'); $('#saverow').classList.add('hide'); draw();  // camber overlay is main-mode only
   const mk = (lo, hi) => analyzeShot({ stripes: [{ hFrac: 0.35, seeds: pts[lo] }, { hFrac: 0.75, seeds: pts[hi] }] });
   const jib = mk('jibLo', 'jibHi'), main = mk('mainLo', 'mainHi');
   const s = slotDiagnose(jib, main);
@@ -990,10 +1047,27 @@ function revealResult() {
   $('#decision').classList.remove('hide'); $('#shapeDisc').classList.remove('hide');
   if (first) $('#decision').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
-function hideResult() { analyzedOnce = false; overlay = null; $('#legend').innerHTML = ''; $('#reading').classList.add('hide'); $('#decision').classList.add('hide'); $('#shapeDisc').classList.add('hide'); }
+function hideResult() { analyzedOnce = false; overlay = null; $('#legend').innerHTML = ''; $('#reading').classList.add('hide'); $('#saverow').classList.add('hide'); $('#decision').classList.add('hide'); $('#shapeDisc').classList.add('hide'); }
+
+// ---------- personal fast-shape library ----------
+function updateLibNote() {
+  const el = $('#libnote'); if (!el || !lastEntry) return;
+  const b = lastEntry.band === 'unknown' ? 'medium' : lastEntry.band;
+  const s = librarySummary(trimLib)[b] || { fast: 0, total: 0 };
+  const p = personalTargets(trimLib)[b];
+  el.innerHTML = p
+    ? `Library: <b style="color:#7ee0a8">${s.fast} fast shapes (${b})</b> — target is now from YOUR boat.`
+    : `Library: ${s.fast} fast (${b}) — need 3 to set a personal target (still textbook).`;
+}
+document.querySelectorAll('#saverow .sv').forEach((el) => el.addEventListener('click', () => {
+  if (!lastEntry) return;
+  trimLib.push({ ...lastEntry, verdict: el.dataset.v }); saveLib();
+  updateLibNote();
+  if (el.dataset.v === 'fast' && analyzedOnce) runAnalyze();   // a new fast shape may set/refresh the personal target
+}));
 
 // ---------- boot ----------
-autoInstruments(); updateWind(); updateGuide(); show('start');
+loadLib(); autoInstruments(); updateWind(); updateGuide(); show('start');
 </script>
 <script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}</script>
 </body>
