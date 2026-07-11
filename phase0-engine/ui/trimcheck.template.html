@@ -92,8 +92,10 @@
       <div class="fld"><label>TWS (kt)</label><input id="c_tws" type="number" step="0.1" value="10" /></div>
     </div>
     <button class="primary" id="takeBtn">📷 Take photo</button>
-    <div style="text-align:center"><button class="link" id="importLink">or import a photo</button></div>
+    <div style="text-align:center"><button class="link" id="importLink">or import a photo</button> · <button class="link" id="logLink">＋ session log</button></div>
     <input id="file" type="file" accept="image/*" class="hide" />
+    <input id="logFile" type="file" accept=".json,application/json" class="hide" />
+    <div class="cap" id="logNote" style="text-align:center;margin-top:4px"></div>
 
     <div class="guidewrap" id="guide">
       <svg id="frameSvg" viewBox="0 0 400 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How to frame the sail photo">
@@ -265,9 +267,53 @@ function useImage(im, source) {
 $('#importLink').addEventListener('click', () => $('#file').click());
 $('#file').addEventListener('change', (e) => {
   const f = e.target.files && e.target.files[0]; if (!f) return;
+  autoTagFromPhoto(f);                                            // read EXIF time → auto-fill conditions from the session log
   const url = URL.createObjectURL(f); const im = new Image();
   im.onload = () => { useImage(im, 'file'); URL.revokeObjectURL(url); };
   im.src = url;
+});
+
+// ---------- EXIF → session-log auto-tag (no typing) ----------
+// The session log is the boat's own YDWG-02 stream, reduced to the SessionLog schema. It reaches this
+// page three ways: the app shell sets window.LJ_SESSIONLOG; a prior Debrief cached it to localStorage;
+// or the skipper imports the exported JSON here. A photo's EXIF timestamp then picks the matching sample.
+const SLOGKEY = 'lj-sessionlog-v1';
+let sessionLog = null;
+function loadSessionLog() {
+  const shell = window.LJ_SESSIONLOG || (window.parent && window.parent.LJ_SESSIONLOG);
+  if (shell && shell.samples) { sessionLog = shell; return; }
+  try { const j = localStorage.getItem(SLOGKEY); if (j) { const s = JSON.parse(j); if (s && s.samples) sessionLog = s; } } catch (e) {}
+}
+const hhmmssZ = (ms) => new Date(ms).toISOString().slice(11, 19) + 'Z';
+function setLogNote(html, warn) { const el = $('#logNote'); if (el) { el.innerHTML = html; el.style.color = warn ? '#f0d97a' : '#7ee0a8'; } }
+function autoTagFromPhoto(file) {
+  if (!file.arrayBuffer) return;
+  file.arrayBuffer().then((buf) => {
+    const ex = parseExif(new Uint8Array(buf));
+    if (!ex || ex.tMs == null) { setLogNote('No timestamp in this photo — set wind &amp; speed by hand.', true); return; }
+    const clock = hhmmssZ(ex.tMs) + (ex.timebase === 'local' ? ' (no timezone)' : '');
+    if (!sessionLog) { setLogNote(`Photo @ ${clock} — load a session log to auto-fill wind.`, true); return; }
+    const c = conditionsAt(sessionLog, ex.tMs, { maxGapMs: 15000 });
+    if (!c) { setLogNote(`Photo @ ${clock} — no log sample within 15 s${ex.timebase === 'local' ? ' (photo has no timezone; may be off)' : ''}.`, true); return; }
+    if (c.sog != null) $('#c_sog').value = (+c.sog).toFixed(1);
+    if (c.aws != null) $('#c_aws').value = (+c.aws).toFixed(1);
+    if (c.awa != null) $('#c_awa').value = Math.round(c.awa);
+    if (c.tws != null) $('#c_tws').value = (+c.tws).toFixed(1); else deriveTWS();
+    updateWind();
+    const gap = c.gapMs < 1000 ? '±<1 s' : `±${Math.round(c.gapMs / 1000)} s`;
+    setLogNote(`✓ Wind &amp; speed from session log · ${hhmmssZ(c.t)} · ${gap}`);
+  }).catch(() => {});
+}
+$('#logLink').addEventListener('click', () => $('#logFile').click());
+$('#logFile').addEventListener('change', (e) => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  f.text().then((txt) => {
+    let s; try { s = JSON.parse(txt); } catch (err) { setLogNote('That file isn\'t valid JSON.', true); return; }
+    if (!s || !Array.isArray(s.samples) || !s.samples.length) { setLogNote('No samples in that session log.', true); return; }
+    sessionLog = s; try { localStorage.setItem(SLOGKEY, txt); } catch (err) {}
+    const span = (s.end && s.start) ? ` · ${hhmmssZ(s.start)}–${hhmmssZ(s.end)}` : '';
+    setLogNote(`Session log loaded: ${s.samples.length} samples${span}. Import a photo to auto-tag it.`);
+  }).catch(() => {});
 });
 
 // ---------- camera ----------
@@ -556,7 +602,7 @@ document.querySelectorAll('#saverow .sv').forEach((el) => el.addEventListener('c
 }));
 
 // ---------- boot ----------
-loadLib(); autoInstruments(); updateWind(); updateGuide(); show('start');
+loadLib(); loadSessionLog(); autoInstruments(); updateWind(); updateGuide(); show('start');
 </script>
 </body>
 </html>
