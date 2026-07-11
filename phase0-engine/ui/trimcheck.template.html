@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <!-- SOURCE TEMPLATE for trimcheck.html. Do NOT edit trimcheck.html by hand.
-     Trim Check (v1, relative): import a sail photo, tap the luff + draft stripes, get the ONE trim
-     action for the current wind. Runs the SAME audited trim-shape + trim-diagnose modules the tests
-     verify. Edit this + src/trim-shape.mjs + src/trim-diagnose.mjs, then: node ui/build.mjs -->
+     Photo-first, staged flow (per the 11-Jul simplicity audit): show only what the moment needs, auto-
+     infer the rest. Runs the SAME audited trim-shape + trim-diagnose + stripe-detect modules the tests
+     verify. Edit this + src/*.mjs, then: node ui/build.mjs -->
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -11,181 +11,140 @@
 <style>
   *{box-sizing:border-box}
   body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0f1c2b;color:#eaf1f7}
-  .wrap{max-width:940px;margin:0 auto;padding:18px}
-  h1{font-size:20px;margin:0 0 2px}
-  .sub{color:#8aa0b4;font-size:12.5px;margin-bottom:12px;line-height:1.5}
-  .modes{display:flex;gap:7px;margin:2px 0 12px}
-  .md{font-size:12.5px;font-weight:800;padding:6px 13px;border-radius:10px;background:#16273a;border:1px solid #2c435a;color:#9fb4c8;cursor:pointer}
+  .wrap{max-width:760px;margin:0 auto;padding:16px}
+  h1{font-size:20px;margin:0;display:flex;align-items:center;gap:8px}
+  .i{font-size:12px;font-weight:800;color:#9fb4c8;border:1px solid #2c435a;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+  .info{display:none;background:#16273a;border:1px solid #23384e;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#9fb4c8;line-height:1.5;margin:10px 0}
+  .info.show{display:block}
+  .modes{display:flex;gap:8px;margin:14px 0}
+  .md{flex:1;text-align:center;font-size:14px;font-weight:800;padding:11px;border-radius:12px;background:#16273a;border:1px solid #2c435a;color:#9fb4c8;cursor:pointer}
   .md.sel{background:#20344b;border-color:#ff5a3c;color:#eaf1f7}
-  .controls{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;background:#16273a;border:1px solid #23384e;border-radius:12px;padding:12px 14px;margin-bottom:12px}
-  .fld label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:#8aa0b4;margin-bottom:4px;font-weight:700}
-  .fld input[type=number]{width:92px;background:#0f1c2b;border:1px solid #2c435a;border-radius:9px;color:#eaf1f7;font-size:16px;font-weight:700;padding:8px 10px}
-  .btn{border:1px solid #2c435a;background:#16273a;border-radius:9px;padding:9px 14px;font-size:13px;font-weight:800;color:#eaf1f7;cursor:pointer}
+  .windchip{display:inline-flex;align-items:center;gap:7px;background:#16273a;border:1px solid #2c435a;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer}
+  .windchip b{color:#7ec8ff}
+  .windedit{display:none;gap:10px;flex-wrap:wrap;background:#16273a;border:1px solid #23384e;border-radius:12px;padding:12px;margin:10px 0}
+  .windedit.show{display:flex}
+  .windedit .fld label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#8aa0b4;margin-bottom:3px;font-weight:700}
+  .windedit input{width:82px;background:#0f1c2b;border:1px solid #2c435a;border-radius:8px;color:#eaf1f7;font-size:15px;font-weight:700;padding:7px 9px}
+  .primary{display:block;width:100%;font-size:17px;font-weight:800;padding:16px;border-radius:14px;background:#2E6BA8;border:1px solid #2E6BA8;color:#fff;cursor:pointer;margin-top:14px}
+  .link{display:inline-block;margin-top:10px;color:#7ec8ff;font-size:13px;text-decoration:underline;cursor:pointer;background:none;border:none}
+  .btn{border:1px solid #2c435a;background:#16273a;border-radius:10px;padding:10px 14px;font-size:14px;font-weight:800;color:#eaf1f7;cursor:pointer}
   .btn.go{background:#2E6BA8;border-color:#2E6BA8}
-  .btn:disabled{opacity:.4;cursor:not-allowed}
-  .fxnote{font-size:11px;color:#8aa0b4;flex-basis:100%}
-  .targets{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 8px}
-  .tg{font-size:12px;font-weight:800;padding:5px 11px;border-radius:9px;background:#16273a;border:1px solid #2c435a;color:#9fb4c8;cursor:pointer}
-  .tg.sel{border-color:#ff5a3c;color:#eaf1f7;background:#20344b}
-  .tg .n{display:inline-block;min-width:16px;text-align:center;font-size:10px;color:#7ee0a8;margin-left:5px}
-  .stage{position:relative;background:#0b1622;border:1px dashed #2c435a;border-radius:12px;overflow:hidden;min-height:220px;display:flex;align-items:center;justify-content:center}
-  .stage.empty{color:#6f889e;font-size:13px;padding:40px}
-  canvas{display:block;max-width:100%;max-height:70vh;touch-action:none;cursor:crosshair}
-  .grp{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#8aa0b4;margin:16px 2px 7px;font-weight:700}
-  .decision{background:linear-gradient(180deg,#132536,#101f2e);border:1px solid #2c435a;border-left:6px solid #2E6BA8;border-radius:14px;padding:16px 18px}
+  .guidewrap{margin:16px 0 0}
+  .guidewrap svg,.guidewrap img{width:100%;max-width:320px;height:auto;display:block;margin:0 auto;border-radius:10px}
+  .cap{font-size:12px;color:#9fb4c8;line-height:1.5;margin-top:8px;text-align:center}
+  .cap .lf{color:#ff8a6b}
+  #camwrap{position:relative}
+  #cam{width:100%;max-height:74vh;display:block;border-radius:12px;background:#000}
+  .camrow{display:flex;justify-content:space-between;align-items:center;position:absolute;left:0;right:0;top:10px;padding:0 12px}
+  .shutrow{position:absolute;left:0;right:0;bottom:16px;display:flex;justify-content:center;align-items:center}
+  .shutter{width:66px;height:66px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.55);cursor:pointer}
+  .zoom,.xbtn{background:rgba(0,0,0,.5);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:20px;padding:7px 13px;font-weight:800;font-size:14px;cursor:pointer}
+  #review{display:none}
+  .revbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+  .stage{background:#0b1622;border-radius:12px;overflow:hidden;display:flex;justify-content:center}
+  canvas{display:block;max-width:100%;max-height:62vh;touch-action:none;cursor:crosshair}
+  .status{font-size:14px;font-weight:800;margin:11px 2px;min-height:18px}
+  .status.ready{color:#7ee0a8}.status.wait{color:#f0d97a}
+  .mini{font-size:12px;color:#9fb4c8;cursor:pointer;background:none;border:none;text-decoration:underline;padding:2px 4px}
+  .decision{background:linear-gradient(180deg,#132536,#101f2e);border:1px solid #2c435a;border-left:6px solid #2E6BA8;border-radius:14px;padding:16px 18px;margin-top:14px}
   .decision.act{border-left-color:#ff8a3c}.decision.groove{border-left-color:#2aa06a}
   .decision .a{font-size:21px;font-weight:900;line-height:1.2}
-  .decision .c{font-size:13px;color:#cfe0ef;margin-top:6px}
-  .decision .c b{color:#ffd9a0}
+  .decision .c{font-size:13px;color:#cfe0ef;margin-top:6px}.decision .c b{color:#ffd9a0}
+  .decision .others{font-size:12.5px;color:#9fb4c8;margin-top:6px;line-height:1.5}
   .cav{font-size:11.5px;color:#e0c34a;margin-top:9px;line-height:1.5}
-  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
-  th{text-align:left;color:#8aa0b4;font-size:10px;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #2c435a;padding:5px 7px}
-  td{padding:5px 7px;border-bottom:1px solid #1b2c40}
+  details{margin-top:10px}summary{cursor:pointer;color:#9fb4c8;font-size:13px;font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+  th{text-align:left;color:#8aa0b4;font-size:10px;text-transform:uppercase;border-bottom:1px solid #2c435a;padding:5px 6px}
+  td{padding:5px 6px;border-bottom:1px solid #1b2c40}
   td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
-  .others{font-size:12.5px;color:#9fb4c8;line-height:1.6;margin-top:6px}
-  .foot{color:#6f889e;font-size:11px;margin-top:16px;line-height:1.6}
-  .guide{background:#0d1a28;border:1px solid #23384e;border-radius:12px;padding:12px 14px;margin-bottom:12px}
-  .guide.hidden{display:none}
-  .guide svg{width:100%;max-width:360px;height:auto;display:block;margin:0 auto;border-radius:10px}
-  .guide .cap{font-size:12px;color:#9fb4c8;line-height:1.6;margin-top:9px}
-  .guide .cap b{color:#eaf1f7}
-  .guide .cap .lf{color:#ff8a6b}
+  .hide{display:none !important}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Trim Check</h1>
-  <div class="sub">Photograph the sail, tap the luff and the draft stripes, and get the one control to pull for today's wind. Decision first — the shape numbers are below it. v1 is a relative reading: draft position and twist are trustworthy; absolute depth firms up once the mast marks are calibrated.</div>
+  <h1>Trim Check <span class="i" id="infoBtn">i</span></h1>
+  <div class="info" id="info">Photograph the sail, tap each draft stripe once, get the one control to pull for the wind. Draft position &amp; twist are the trustworthy numbers; camber firms up with mast marks. Wind auto-fills from the boat's instruments — tap the wind to override it offline.</div>
 
-  <div class="modes" id="modes">
-    <span class="md sel" data-mode="main">Main shape</span>
-    <span class="md" data-mode="slot">Jib–main slot</span>
+  <!-- ===== START ===== -->
+  <div id="start">
+    <div class="modes" id="modes">
+      <div class="md sel" data-mode="main">Main shape</div>
+      <div class="md" data-mode="slot">Jib–main slot</div>
+    </div>
+    <div style="text-align:center"><span class="windchip" id="windChip">Wind <b id="windVal">10 kt</b> · edit</span></div>
+    <div class="windedit" id="windEdit">
+      <div class="fld"><label>Boat speed</label><input id="c_sog" type="number" step="0.1" placeholder="—" /></div>
+      <div class="fld"><label>AWS</label><input id="c_aws" type="number" step="0.1" placeholder="—" /></div>
+      <div class="fld"><label>AWA</label><input id="c_awa" type="number" step="1" placeholder="—" /></div>
+      <div class="fld"><label>TWS (kt)</label><input id="c_tws" type="number" step="0.1" value="10" /></div>
+    </div>
+    <button class="primary" id="takeBtn">📷 Take photo</button>
+    <div style="text-align:center"><button class="link" id="importLink">or import a photo</button></div>
+    <input id="file" type="file" accept="image/*" class="hide" />
+
+    <div class="guidewrap" id="guide">
+      <svg id="frameSvg" viewBox="0 0 400 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How to frame the sail photo">
+        <defs>
+          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9d6f5"/><stop offset="1" stop-color="#e6f3ff"/></linearGradient>
+          <linearGradient id="sailg" x1="0.15" y1="0" x2="0.85" y2="1"><stop offset="0" stop-color="#11151b"/><stop offset="0.55" stop-color="#20262f"/><stop offset="1" stop-color="#2b333d"/></linearGradient>
+        </defs>
+        <rect width="400" height="320" fill="url(#sky)"/>
+        <path d="M150 20 L52 262 L340 205 Z" fill="url(#sailg)"/>
+        <path d="M150 20 L340 205" stroke="#05070a" stroke-width="5" stroke-linecap="round"/>
+        <line x1="52" y1="262" x2="150" y2="20" stroke="#ff5a3c" stroke-width="3"/>
+        <g fill="none">
+          <path d="M73.6 206.1 Q185 205 296.6 164.7" stroke="#c9ccd2" stroke-opacity="0.5" stroke-width="5"/><path d="M73.6 206.1 Q185 205 296.6 164.7" stroke="#fff" stroke-width="3"/>
+          <path d="M93.2 158.9 Q176 160 259.0 128.1" stroke="#c9ccd2" stroke-opacity="0.5" stroke-width="4.4"/><path d="M93.2 158.9 Q176 160 259.0 128.1" stroke="#fff" stroke-width="2.6"/>
+          <path d="M112.8 111.7 Q167 115 221.4 91.5" stroke="#c9ccd2" stroke-opacity="0.5" stroke-width="4"/><path d="M112.8 111.7 Q167 115 221.4 91.5" stroke="#fff" stroke-width="2.3"/>
+          <path d="M132.4 64.5 Q158 69 183.8 54.9" stroke="#c9ccd2" stroke-opacity="0.5" stroke-width="3.4"/><path d="M132.4 64.5 Q158 69 183.8 54.9" stroke="#fff" stroke-width="2"/>
+        </g>
+        <text x="150" y="118" fill="#d21f1f" font-family="Arial, sans-serif" font-weight="900" font-size="18" transform="rotate(-9 150 118)">SUI 6116</text>
+        <rect x="38" y="10" width="324" height="262" rx="14" fill="none" stroke="#2E6BA8" stroke-width="2" stroke-dasharray="7 6"/>
+      </svg>
+      <svg id="frameSvgSlot" viewBox="0 0 400 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How to frame the slot" style="display:none">
+        <defs><linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9d6f5"/><stop offset="1" stop-color="#e6f3ff"/></linearGradient></defs>
+        <rect width="400" height="320" fill="url(#sky2)"/>
+        <path d="M20 60 L188 34 L206 300 L20 300 Z" fill="#c7d2dc" fill-opacity="0.92"/>
+        <path d="M236 26 L384 58 L384 300 L262 300 Z" fill="#20262f"/>
+        <path d="M188 34 Q192 170 206 300" fill="none" stroke="#2ec77a" stroke-width="3.5"/>
+        <path d="M236 26 Q246 160 262 300" fill="none" stroke="#ff8a3c" stroke-width="3.5"/>
+        <text x="96" y="150" fill="#1f7a4a" font-family="-apple-system, Arial, sans-serif" font-size="13" font-weight="800" transform="rotate(-80 96 150)">JIB leech</text>
+        <text x="332" y="150" fill="#c2521a" font-family="-apple-system, Arial, sans-serif" font-size="13" font-weight="800" transform="rotate(-80 332 150)">MAIN leech</text>
+        <text x="216" y="118" fill="#3a5a78" font-family="-apple-system, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">slot</text>
+        <rect x="14" y="12" width="372" height="292" rx="14" fill="none" stroke="#2E6BA8" stroke-width="2" stroke-dasharray="7 6"/>
+      </svg>
+      <img id="frameRef" class="hide" alt="Framing reference" />
+      <div class="cap" id="guideCap"></div>
+    </div>
   </div>
 
-  <div class="controls">
-    <div class="fld"><label>Take / import photo</label><input id="file" type="file" accept="image/*" /></div>
-    <button class="btn" id="camBtn">📷 Camera</button>
-    <button class="btn go" id="analyze" disabled>Analyze</button>
-    <button class="btn" id="undo" disabled>Undo point</button>
-    <button class="btn" id="clear" disabled>Clear</button>
-    <button class="btn" id="guideBtn">Framing guide</button>
-    <div class="fxnote" id="hint"><b>1-tap:</b> set the luff side, pick a stripe, then tap <b>once on that stripe</b> — the app traces the line for you. Repeat for each stripe and press Analyze. If a trace looks wrong, switch to Manual and tap 3+ points along the curve yourself.</div>
-  </div>
-
-  <div class="controls" id="cond" style="gap:10px">
-    <div class="fld"><label>Boat speed (kn)</label><input id="c_sog" type="number" step="0.1" placeholder="—" /></div>
-    <div class="fld"><label>App. wind AWS (kn)</label><input id="c_aws" type="number" step="0.1" placeholder="—" /></div>
-    <div class="fld"><label>App. wind angle AWA (°)</label><input id="c_awa" type="number" step="1" placeholder="—" /></div>
-    <div class="fld"><label>True wind TWS (kn)</label><input id="c_tws" type="number" step="0.1" value="10" /></div>
-    <button class="btn" id="autoBtn">Auto from instruments</button>
-    <div class="fxnote" id="condNote">Wind &amp; speed auto-fill from the boat's instruments when connected; override any field manually offline. <b>TWS drives the trim target</b> — it's computed from AWS, AWA and boat speed when those are present.</div>
-  </div>
-
-  <div class="targets" id="lctl" style="align-items:center">
-    <span style="font-size:12px;color:#8aa0b4;font-weight:700;margin-right:2px">Luff side</span>
-    <span class="tg sel" id="luffL" data-side="left">◀ Left</span>
-    <span class="tg" id="luffR" data-side="right">Right ▶</span>
-    <span style="display:inline-block;width:16px"></span>
-    <span style="font-size:12px;color:#8aa0b4;font-weight:700;margin-right:2px">Input</span>
-    <span class="tg sel" id="capAuto" data-cap="auto">1-tap auto</span>
-    <span class="tg" id="capManual" data-cap="manual">Manual</span>
-  </div>
-
-  <div class="guide" id="guide">
-    <!-- If a real Little Johnka up-the-sail photo is dropped in as ui/frame-guide.jpg it is used
-         automatically; otherwise the schematic below is shown. (Never ship a watermarked stock photo.) -->
-    <img id="frameRef" alt="Framing reference — a real Little Johnka up-the-sail photo" style="width:100%;max-width:360px;display:none;border-radius:10px;margin:0 auto" />
-    <svg id="frameSvg" viewBox="0 0 400 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How to frame the sail photo">
-      <defs>
-        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9d6f5"/><stop offset="1" stop-color="#e6f3ff"/></linearGradient>
-        <linearGradient id="sailg" x1="0.15" y1="0" x2="0.85" y2="1"><stop offset="0" stop-color="#11151b"/><stop offset="0.55" stop-color="#20262f"/><stop offset="1" stop-color="#2b333d"/></linearGradient>
-      </defs>
-      <rect width="400" height="320" fill="url(#sky)"/>
-      <!-- mainsail from below the boom, looking up the luff: head top, tack near camera (lower-left), clew lower-right -->
-      <path d="M150 20 L52 262 L340 205 Z" fill="url(#sailg)"/>
-      <!-- leech / mast spar down the right side (the dark bar in a real up-the-sail shot) -->
-      <path d="M150 20 L340 205" stroke="#05070a" stroke-width="5" stroke-linecap="round"/>
-      <path d="M150 20 L340 205" stroke="#3a4552" stroke-width="1.4" stroke-linecap="round"/>
-      <!-- luff (mast side) emphasised -->
-      <line x1="52" y1="262" x2="150" y2="20" stroke="#ff5a3c" stroke-width="3"/>
-      <!-- faint rigging crossing the frame, like real shrouds -->
-      <g stroke="#0e1a28" stroke-opacity="0.20" stroke-width="1">
-        <line x1="8" y1="300" x2="250" y2="40"/><line x1="380" y1="300" x2="150" y2="35"/><line x1="120" y1="315" x2="330" y2="120"/>
-      </g>
-      <!-- four draft stripes, luff to leech, bellied; a grey seam shadow under a white line gives depth -->
-      <g fill="none">
-        <path d="M73.6 206.1 Q185 205 296.6 164.7" stroke="#c9ccd2" stroke-opacity="0.5" stroke-width="5"/>
-        <path d="M73.6 206.1 Q185 205 296.6 164.7" stroke="#fff" stroke-width="3"/>
-        <path d="M93.2 158.9 Q176 160 259.0 128.1" stroke="#c9ccd2" stroke-opacity="0.5" stroke-width="4.4"/>
-        <path d="M93.2 158.9 Q176 160 259.0 128.1" stroke="#fff" stroke-width="2.6"/>
-        <path d="M112.8 111.7 Q167 115 221.4 91.5" stroke="#c9ccd2" stroke-opacity="0.5" stroke-width="4"/>
-        <path d="M112.8 111.7 Q167 115 221.4 91.5" stroke="#fff" stroke-width="2.3"/>
-        <path d="M132.4 64.5 Q158 69 183.8 54.9" stroke="#c9ccd2" stroke-opacity="0.5" stroke-width="3.4"/>
-        <path d="M132.4 64.5 Q158 69 183.8 54.9" stroke="#fff" stroke-width="2"/>
-      </g>
-      <!-- sail number to evoke LJ -->
-      <text x="150" y="118" fill="#d21f1f" font-family="Arial, sans-serif" font-weight="900" font-size="18" transform="rotate(-9 150 118)">SUI 6116</text>
-      <!-- target frame -->
-      <rect x="38" y="10" width="324" height="262" rx="14" fill="none" stroke="#2E6BA8" stroke-width="2" stroke-dasharray="7 6"/>
-      <!-- where you stand: phone at the tack, sightline up the sail -->
-      <line x1="55" y1="246" x2="120" y2="120" stroke="#2E6BA8" stroke-width="1.5" stroke-dasharray="4 4"/>
-      <g transform="translate(48 260)"><rect x="-10" y="-6" width="20" height="30" rx="4" fill="#0b1622" stroke="#eaf1f7" stroke-width="1.5"/><circle cx="0" cy="9" r="4.5" fill="none" stroke="#eaf1f7" stroke-width="1.5"/></g>
-      <text x="200" y="296" text-anchor="middle" fill="#25405c" font-family="-apple-system, Arial, sans-serif" font-size="12" font-weight="700">Under the boom · point up · all 4 stripes, luff to leech</text>
-    </svg>
-    <svg id="frameSvgSlot" viewBox="0 0 400 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How to frame the jib–main slot photo" style="display:none">
-      <defs><linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9d6f5"/><stop offset="1" stop-color="#e6f3ff"/></linearGradient></defs>
-      <rect width="400" height="320" fill="url(#sky2)"/>
-      <!-- jib on the left (lighter), main on the right (darker); the SLOT is the sky wedge between their leeches -->
-      <path d="M20 60 L188 34 L206 300 L20 300 Z" fill="#c7d2dc" fill-opacity="0.92"/>
-      <path d="M236 26 L384 58 L384 300 L262 300 Z" fill="#20262f"/>
-      <!-- faint draft stripes to read as sails -->
-      <g fill="none" stroke-opacity="0.35">
-        <path d="M40 150 Q120 150 200 132" stroke="#8a97a3" stroke-width="2"/>
-        <path d="M270 150 Q330 140 384 150" stroke="#c9ccd2" stroke-width="2"/>
-      </g>
-      <!-- the two leeches the app compares: jib (green), main (orange) -->
-      <path d="M188 34 Q192 170 206 300" fill="none" stroke="#2ec77a" stroke-width="3.5"/>
-      <path d="M236 26 Q246 160 262 300" fill="none" stroke="#ff8a3c" stroke-width="3.5"/>
-      <text x="96" y="150" fill="#1f7a4a" font-family="-apple-system, Arial, sans-serif" font-size="13" font-weight="800" transform="rotate(-80 96 150)">JIB leech</text>
-      <text x="332" y="150" fill="#c2521a" font-family="-apple-system, Arial, sans-serif" font-size="13" font-weight="800" transform="rotate(-80 332 150)">MAIN leech</text>
-      <text x="216" y="118" fill="#3a5a78" font-family="-apple-system, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">slot</text>
-      <!-- target frame + stand on the centreline, sightline up the slot -->
-      <rect x="14" y="12" width="372" height="292" rx="14" fill="none" stroke="#2E6BA8" stroke-width="2" stroke-dasharray="7 6"/>
-      <line x1="210" y1="292" x2="222" y2="130" stroke="#2E6BA8" stroke-width="1.5" stroke-dasharray="4 4"/>
-      <g transform="translate(210 296)"><rect x="-10" y="-6" width="20" height="30" rx="4" fill="#0b1622" stroke="#eaf1f7" stroke-width="1.5"/><circle cx="0" cy="9" r="4.5" fill="none" stroke="#eaf1f7" stroke-width="1.5"/></g>
-    </svg>
-    <div class="cap" id="guideCap"></div>
-  </div>
-
-  <div class="targets" id="targets"></div>
-  <div class="fxnote" id="ready" style="margin:0 0 8px"></div>
-
-  <div id="camwrap" style="display:none;position:relative;margin-bottom:12px">
-    <video id="cam" playsinline autoplay muted style="width:100%;max-height:70vh;display:block;border-radius:12px;background:#000"></video>
+  <!-- ===== CAMERA ===== -->
+  <div id="camwrap" class="hide">
+    <video id="cam" playsinline autoplay muted></video>
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
-      <line x1="50" y1="0" x2="50" y2="100" stroke="#ff5a3c" stroke-width="0.4" stroke-dasharray="2 2"/>
+      <line x1="50" y1="2" x2="50" y2="98" stroke="#ff5a3c" stroke-width="0.4" stroke-dasharray="2 2"/>
       <rect x="6" y="4" width="88" height="92" rx="3" fill="none" stroke="#2E6BA8" stroke-width="0.5" stroke-dasharray="2.5 2"/>
     </svg>
-    <div style="position:absolute;left:0;right:0;bottom:10px;display:flex;justify-content:center;gap:8px;align-items:center">
-      <span class="tg" data-zoom="0.5">.5</span><span class="tg sel" data-zoom="1">1×</span>
-      <span class="tg" data-zoom="2">2×</span><span class="tg" data-zoom="3">3×</span>
-    </div>
-    <div style="position:absolute;left:0;right:0;top:10px;display:flex;justify-content:space-between;padding:0 12px">
-      <button class="btn" id="camClose">Close</button>
-      <button class="btn go" id="shutter">Capture</button>
-    </div>
-    <div class="fxnote" id="camNote" style="position:absolute;left:12px;bottom:44px;color:#eaf1f7"></div>
+    <div class="camrow"><button class="xbtn" id="camClose">✕</button><span class="zoom hide" id="zoomBtn">1×</span></div>
+    <div class="shutrow"><button class="shutter" id="shutter" aria-label="Capture"></button></div>
+    <div class="cap" id="camNote" style="position:absolute;left:0;right:0;bottom:92px;color:#eaf1f7"></div>
   </div>
 
-  <div class="stage empty" id="stage">No photo yet — use "Take / import photo" or 📷 Camera above. Works offline.</div>
+  <!-- ===== REVIEW ===== -->
+  <div id="review">
+    <div class="revbar">
+      <button class="btn" id="retakeBtn">↺ Retake</button>
+      <span class="windchip" id="windChip2">Wind <b id="windVal2">10 kt</b></span>
+      <button class="mini" id="undoBtn">Undo tap</button>
+    </div>
+    <div class="stage" id="stage"></div>
+    <div class="status wait" id="status"></div>
+    <div style="text-align:center"><button class="mini" id="flipLuff"></button></div>
+  </div>
 
-  <div class="grp">The call</div>
-  <div class="decision groove" id="decision"><div class="a">Set the luff side, tap each stripe, then Analyze.</div></div>
-
-  <div class="grp" id="shapeGrp" style="display:none">Measured shape</div>
-  <div id="shape"></div>
-
-  <div class="foot" id="foot"></div>
+  <!-- ===== RESULT ===== -->
+  <div class="decision groove hide" id="decision"></div>
+  <details id="shapeDisc" class="hide"><summary>Show shape numbers</summary><div id="shape"></div><div class="cap" id="foot" style="text-align:left"></div></details>
 </div>
 
 <script type="module">
@@ -193,256 +152,221 @@
 //__DATA__//
 
 const $ = (s) => document.querySelector(s);
-const COLORS = { luff: '#ffd166', s1: '#8be0a8', s2: '#7ec8ff', s3: '#c9a2ff', s4: '#ff9a8b',
-                 jibLo: '#8be0a8', jibHi: '#7ec8ff', mainLo: '#ffd166', mainHi: '#ff9a8b' };
+const COLORS = { s1: '#8be0a8', s2: '#7ec8ff', s3: '#c9a2ff', s4: '#ff9a8b', jibLo: '#2ec77a', jibHi: '#7ee0a8', mainLo: '#ffd166', mainHi: '#ff9a8b' };
 const MODES = {
-  main: { targets: [['s1', 'Stripe 1 (bottom)'], ['s2', 'Stripe 2'], ['s3', 'Stripe 3'], ['s4', 'Stripe 4 (top)']] },
-  slot: { targets: [['jibLo', 'Jib low'], ['jibHi', 'Jib high'], ['mainLo', 'Main low'], ['mainHi', 'Main high']] },
+  main: { targets: [['s1', 'stripe 1 (bottom)'], ['s2', 'stripe 2'], ['s3', 'stripe 3'], ['s4', 'stripe 4 (top)']] },
+  slot: { targets: [['jibLo', 'jib leech — low'], ['jibHi', 'jib leech — high'], ['mainLo', 'main leech — low'], ['mainHi', 'main leech — high']] },
 };
-let mode = 'main', active = 's1', pts = {}, img = null, scale = 1;
-let luffSide = 'left', autoMode = true, gray = null;   // gray = luminance of the loaded photo (for 1-tap trace)
+let mode = 'main', active = 's1', pts = {}, img = null, gray = null, luffSide = 'left', lastSource = 'file', analyzedOnce = false;
 const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
-
-function resetPoints() { pts = {}; for (const m of Object.values(MODES)) for (const [k] of m.targets) pts[k] = []; }
+function resetPoints() { pts = {}; for (const m of Object.values(MODES)) for (const [k] of m.targets) pts[k] = []; active = MODES[mode].targets[0][0]; analyzedOnce = false; }
 resetPoints();
 
-// ---- image load (shared by file import and the camera) ----
-function useImage(im) {
-  img = im;
-  const maxW = Math.min(900, $('#stage').clientWidth || 900);
-  scale = Math.min(1, maxW / im.width);
-  canvas.width = Math.round(im.width * scale); canvas.height = Math.round(im.height * scale);
-  const stage = $('#stage'); stage.classList.remove('empty'); stage.innerHTML = ''; stage.appendChild(canvas);
-  $('#guide').classList.add('hidden');                       // collapse the framing guide once a shot is in
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);     // clean draw → grayscale for 1-tap trace
-  gray = toGray(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-  resetPoints(); draw(); syncButtons();
+// ---------- screen state ----------
+function show(state) {
+  $('#start').classList.toggle('hide', state !== 'start');
+  $('#camwrap').classList.toggle('hide', state !== 'camera');
+  $('#review').style.display = state === 'review' ? 'block' : 'none';
+  const res = state === 'review' && analyzedOnce;
+  $('#decision').classList.toggle('hide', !res);
+  $('#shapeDisc').classList.toggle('hide', !res);
+  if (state === 'start') { $('#decision').classList.add('hide'); $('#shapeDisc').classList.add('hide'); }
 }
-$('#file').addEventListener('change', (e) => {
-  const f = e.target.files && e.target.files[0]; if (!f) return;
-  const url = URL.createObjectURL(f);
-  const im = new Image();
-  im.onload = () => { useImage(im); URL.revokeObjectURL(url); };
-  im.src = url;
-});
 
-// ---- live camera (getUserMedia) with a zoom selector + mast-alignment line; falls back to import ----
-let stream = null, track = null;
-async function openCamera() {
-  if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { alert('Camera not supported in this browser — use "Take / import photo".'); return; }
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
-    const v = $('#cam'); v.srcObject = stream; track = stream.getVideoTracks()[0];
-    $('#camwrap').style.display = 'block';
-    const caps = track.getCapabilities ? track.getCapabilities() : {};
-    $('#camNote').textContent = (caps && caps.zoom) ? '' : 'Lens/zoom not adjustable here — pinch or move closer/further.';
-  } catch (err) { alert('Camera unavailable (' + err.name + ') — use "Take / import photo" instead.'); }
+// ---------- mode + framing guide ----------
+function updateGuide() {
+  const isSlot = mode === 'slot';
+  const svgMain = $('#frameSvg'), svgSlot = $('#frameSvgSlot'), ref = $('#frameRef'), cap = $('#guideCap');
+  cap.innerHTML = isSlot
+    ? 'Look up the slot from the centreline — frame the <b style="color:#2ec77a">jib leech</b> and the <b style="color:#ff8a3c">main leech</b> together.'
+    : 'Under the boom, point up so <b>all four stripes show luff to leech</b>. Include the <b class="lf">luff (red)</b>.';
+  const showSvg = () => { svgMain.style.display = isSlot ? 'none' : 'block'; svgSlot.style.display = isSlot ? 'block' : 'none'; ref.classList.add('hide'); };
+  showSvg();
+  ref.onload = () => { ref.classList.remove('hide'); svgMain.style.display = 'none'; svgSlot.style.display = 'none'; };
+  ref.onerror = showSvg;
+  ref.src = isSlot ? 'frame-guide-slot.jpg' : 'frame-guide.jpg';
 }
-function closeCamera() { if (stream) stream.getTracks().forEach((t) => t.stop()); stream = track = null; $('#camwrap').style.display = 'none'; }
-async function setZoom(z) {
-  if (!track || !track.getCapabilities) return;
-  const caps = track.getCapabilities(); if (!caps.zoom) return;                 // web can't switch to the .5 ultrawide lens
-  const val = Math.min(caps.zoom.max, Math.max(caps.zoom.min, z));
-  try { await track.applyConstraints({ advanced: [{ zoom: val }] }); } catch (e) {}
-}
-function capture() {
-  const v = $('#cam'); if (!v.videoWidth) return;
-  const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight;
-  c.getContext('2d').drawImage(v, 0, 0);
-  const im = new Image(); im.onload = () => { useImage(im); closeCamera(); }; im.src = c.toDataURL('image/jpeg', 0.9);
-}
-$('#camBtn').addEventListener('click', openCamera);
-$('#camClose').addEventListener('click', closeCamera);
-$('#shutter').addEventListener('click', capture);
-document.querySelectorAll('#camwrap [data-zoom]').forEach((el) => el.addEventListener('click', () => {
-  document.querySelectorAll('#camwrap [data-zoom]').forEach((z) => z.classList.toggle('sel', z === el));
-  setZoom(Number(el.dataset.zoom));
+document.querySelectorAll('#modes .md').forEach((el) => el.addEventListener('click', () => {
+  mode = el.dataset.mode; resetPoints();
+  document.querySelectorAll('#modes .md').forEach((m) => m.classList.toggle('sel', m.dataset.mode === mode));
+  updateGuide();
 }));
+$('#infoBtn').addEventListener('click', () => $('#info').classList.toggle('show'));
 
-// ---- conditions: auto-fill from the boat's instruments, override manually offline ----
+// ---------- wind (auto from instruments, tap to override) ----------
 const numOf = (sel) => { const el = $(sel); const v = Number(el.value); return (el.value !== '' && Number.isFinite(v)) ? v : null; };
+function updateWind() { const t = $('#c_tws').value || '—'; $('#windVal').textContent = t + ' kt'; $('#windVal2').textContent = t + ' kt'; }
 function deriveTWS() {
   const bs = numOf('#c_sog'), aws = numOf('#c_aws'), awa = numOf('#c_awa');
   if (bs != null && aws != null && awa != null) {
-    const a = Math.abs(awa) * Math.PI / 180;                                    // TWS = √(AWS²+BS²−2·AWS·BS·cosAWA)
+    const a = Math.abs(awa) * Math.PI / 180;
     $('#c_tws').value = Math.sqrt(aws * aws + bs * bs - 2 * aws * bs * Math.cos(a)).toFixed(1);
   }
+  updateWind(); if (analyzedOnce) runAnalyze();
 }
-['#c_sog', '#c_aws', '#c_awa'].forEach((id) => $(id).addEventListener('input', deriveTWS));
-function autoInstruments() {
-  // The below-deck iPhone (Capacitor shell) publishes YDWG-02 values on window.LJ_INSTRUMENTS as JSON.
+['#c_sog', '#c_aws', '#c_awa', '#c_tws'].forEach((id) => $(id).addEventListener('input', deriveTWS));
+$('#windChip').addEventListener('click', () => $('#windEdit').classList.toggle('show'));
+function autoInstruments() {                                    // silent on load — no button
   const s = window.LJ_INSTRUMENTS || (window.parent && window.parent.LJ_INSTRUMENTS);
-  if (!s) { $('#condNote').innerHTML = '<b style="color:#f0d97a">No live instrument feed detected</b> — enter boat speed &amp; wind manually (offline). TWS drives the trim target.'; return; }
+  if (!s) return;
   const bs = s.stw_kn != null ? s.stw_kn : s.sog_kn;
   if (bs != null) $('#c_sog').value = Number(bs).toFixed(1);
   if (s.aws_kn != null) $('#c_aws').value = Number(s.aws_kn).toFixed(1);
   if (s.awa_deg != null) $('#c_awa').value = Math.round(s.awa_deg);
   deriveTWS();
-  if (s.tws_kn != null) $('#c_tws').value = Number(s.tws_kn).toFixed(1);
-  $('#condNote').innerHTML = '<b style="color:#7ee0a8">Live from instruments</b> — override any field if it looks off.';
+  if (s.tws_kn != null) { $('#c_tws').value = Number(s.tws_kn).toFixed(1); updateWind(); }
 }
-$('#autoBtn').addEventListener('click', autoInstruments);
 const conditions = () => ({ tws: numOf('#c_tws'), sog: numOf('#c_sog'), aws: numOf('#c_aws'), awa: numOf('#c_awa') });
 
-// ---- tapping ----
+// ---------- photo in (shared by camera + import) ----------
+function useImage(im, source) {
+  img = im; lastSource = source || 'file';
+  const maxW = Math.min(900, $('#stage').clientWidth || 760);
+  const scale = Math.min(1, maxW / im.width);
+  canvas.width = Math.round(im.width * scale); canvas.height = Math.round(im.height * scale);
+  const stage = $('#stage'); stage.innerHTML = ''; stage.appendChild(canvas);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  gray = toGray(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
+  resetPoints(); draw(); flipLabel(); show('review'); status();
+}
+$('#importLink').addEventListener('click', () => $('#file').click());
+$('#file').addEventListener('change', (e) => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const url = URL.createObjectURL(f); const im = new Image();
+  im.onload = () => { useImage(im, 'file'); URL.revokeObjectURL(url); };
+  im.src = url;
+});
+
+// ---------- camera ----------
+let stream = null, track = null, zoomOn = false;
+async function openCamera() {
+  if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { $('#importLink').click(); return; }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+    $('#cam').srcObject = stream; track = stream.getVideoTracks()[0];
+    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    $('#zoomBtn').classList.toggle('hide', !(caps && caps.zoom));
+    $('#camNote').textContent = (caps && caps.zoom) ? '' : 'Pinch to zoom · frame all stripes';
+    show('camera');
+  } catch (e) { $('#camNote').textContent = ''; $('#importLink').click(); }
+}
+function closeCamera() { if (stream) stream.getTracks().forEach((t) => t.stop()); stream = track = null; }
+$('#takeBtn').addEventListener('click', openCamera);
+$('#camClose').addEventListener('click', () => { closeCamera(); show('start'); });
+$('#shutter').addEventListener('click', () => {
+  const v = $('#cam'); if (!v.videoWidth) return;
+  const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v, 0, 0);
+  const im = new Image(); im.onload = () => { closeCamera(); useImage(im, 'camera'); }; im.src = c.toDataURL('image/jpeg', 0.9);
+});
+$('#zoomBtn').addEventListener('click', async () => {
+  if (!track || !track.getCapabilities) return; const caps = track.getCapabilities(); if (!caps.zoom) return;
+  zoomOn = !zoomOn; const val = zoomOn ? Math.min(caps.zoom.max, 2) : (caps.zoom.min || 1);
+  $('#zoomBtn').textContent = zoomOn ? '2×' : '1×';
+  try { await track.applyConstraints({ advanced: [{ zoom: val }] }); } catch (e) {}
+});
+
+// ---------- tapping: one tap traces the stripe, then auto-advance + auto-analyze ----------
 canvas.addEventListener('pointerdown', (e) => {
   if (!img) return;
   const r = canvas.getBoundingClientRect();
   const x = (e.clientX - r.left) * (canvas.width / r.width), y = (e.clientY - r.top) * (canvas.height / r.height);
-  if (autoMode && gray) {
-    // one tap → trace the whole stripe. If the trace is too weak, fall back to collecting manual taps.
-    const traced = traceStripe(gray, canvas.width, canvas.height, [x, y]);
-    if (traced.length >= 3) pts[active] = traced; else pts[active].push([x, y]);
-  } else {
-    pts[active].push([x, y]);
-  }
-  draw(); renderTargets(); syncButtons();
+  const traced = gray ? traceStripe(gray, canvas.width, canvas.height, [x, y]) : [];
+  if (traced.length >= 3) { pts[active] = traced; advance(); }   // good trace → next stripe
+  else pts[active].push([x, y]);                                  // weak → collect manual points here
+  draw(); status(); if (canAnalyze()) runAnalyze();
 });
+function advance() {
+  const t = MODES[mode].targets.map(([k]) => k);
+  const next = t.find((k) => pts[k].length < 3);
+  if (next) active = next;
+}
+function canAnalyze() {
+  if (mode === 'main') return MODES.main.targets.filter(([k]) => pts[k].length >= 3).length >= 2;
+  return ['jibLo', 'jibHi', 'mainLo', 'mainHi'].every((k) => pts[k].length >= 3);
+}
+function status() {
+  const el = $('#status');
+  if (canAnalyze()) { el.className = 'status ready'; el.innerHTML = 'Got it. Add more stripes to refine, or <b>Retake</b> for another shot.'; return; }
+  el.className = 'status wait';
+  const label = (MODES[mode].targets.find(([k]) => k === active) || [null, ''])[1];
+  const done = MODES[mode].targets.filter(([k]) => pts[k].length >= 3).length;
+  const needTxt = mode === 'main' ? 'tap 2+ stripes' : 'tap all four leech points';
+  el.innerHTML = `Tap the <b>${label}</b> once — ${needTxt}. (${done} done)`;
+}
 
 function draw() {
   if (!img) return;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   for (const key of Object.keys(pts)) {
     const arr = pts[key]; if (!arr.length) continue;
     ctx.strokeStyle = ctx.fillStyle = COLORS[key] || '#fff';
     if (arr.length > 1) { ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(arr[0][0], arr[0][1]); for (const p of arr.slice(1)) ctx.lineTo(p[0], p[1]); ctx.stroke(); }
-    for (const p of arr) { ctx.beginPath(); ctx.arc(p[0], p[1], 6, 0, 7); ctx.fill(); }
+    for (const p of arr) { ctx.beginPath(); ctx.arc(p[0], p[1], 5, 0, 7); ctx.fill(); }
   }
 }
-
-// ---- target chips ----
-function renderTargets() {
-  $('#targets').innerHTML = MODES[mode].targets.map(([k, label]) =>
-    `<span class="tg ${k === active ? 'sel' : ''}" data-k="${k}">${label}<span class="n">${pts[k].length || ''}</span></span>`).join('');
-  document.querySelectorAll('#targets .tg').forEach((el) => el.addEventListener('click', () => { active = el.dataset.k; renderTargets(); }));
-}
-
-function syncButtons() {
-  const has = Object.values(pts).some((a) => a.length);
-  $('#undo').disabled = $('#clear').disabled = !has;
-  $('#analyze').disabled = !img || !canAnalyze();
-  readiness();
-}
-// Live "why is Analyze off / on" feedback — never a silent grey button.
-function readiness() {
-  const el = $('#ready'); if (!el) return;
-  if (!img) { el.innerHTML = ''; return; }
-  if (mode === 'main') {
-    const st = MODES.main.targets.filter(([k]) => k.startsWith('s'));
-    const ready = st.filter(([k]) => pts[k].length >= 3).length;
-    const two = st.filter(([k]) => pts[k].length === 2).length;
-    el.innerHTML = canAnalyze()
-      ? `<b style="color:#7ee0a8">Ready — tap Analyze.</b> ${ready} stripes with 3+ points.`
-      : `<b style="color:#f0d97a">${ready}/${st.length} stripes ready</b> — need ≥3 points on ≥2 stripes.`
-        + (two ? ` ${two} stripe${two > 1 ? 's have' : ' has'} only 2 points — add a tap on the belly (the curve), not the straight line.` : '');
-  } else {
-    const need = ['jibLo', 'jibHi', 'mainLo', 'mainHi'];
-    const ready = need.filter((k) => pts[k].length >= 3).length;
-    el.innerHTML = canAnalyze()
-      ? `<b style="color:#7ee0a8">Ready — tap Analyze.</b>`
-      : `<b style="color:#f0d97a">${ready}/4 lines ready</b> — each of jib low/high + main low/high needs ≥3 points along its curve.`;
-  }
-}
-function canAnalyze() {
-  if (mode === 'main') return MODES.main.targets.filter(([k]) => k.startsWith('s') && pts[k].length >= 3).length >= 2;
-  return ['jibLo', 'jibHi', 'mainLo', 'mainHi'].every((k) => pts[k].length >= 3);
-}
-
-$('#undo').addEventListener('click', () => { const a = pts[active]; if (a && a.length) a.pop(); draw(); renderTargets(); syncButtons(); });
-$('#clear').addEventListener('click', () => { resetPoints(); draw(); renderTargets(); syncButtons(); });
-
-document.querySelectorAll('#modes .md').forEach((el) => el.addEventListener('click', () => {
-  mode = el.dataset.mode; active = MODES[mode].targets[0][0];
-  document.querySelectorAll('#modes .md').forEach((m) => m.classList.toggle('sel', m.dataset.mode === mode));
-  renderTargets(); syncButtons(); updateGuide();
-}));
-
-// ---- analyze ----
-$('#analyze').addEventListener('click', () => {
-  try {
-    if (mode === 'main') analyzeMain(conditions()); else analyzeSlot();
-  } catch (err) { showDecision('act', 'Could not read that — ' + err.message, ''); }
-  // the result renders below a tall photo — bring it into view so it's never "nothing happened"
-  $('#decision').scrollIntoView({ behavior: 'smooth', block: 'center' });
+$('#undoBtn').addEventListener('click', () => {
+  // undo the last stripe that has points
+  const t = MODES[mode].targets.map(([k]) => k).reverse();
+  const k = t.find((k) => pts[k].length); if (k) { pts[k].pop(); active = k; }
+  draw(); status(); if (canAnalyze()) runAnalyze(); else hideResult();
 });
+$('#retakeBtn').addEventListener('click', () => { if (lastSource === 'camera') openCamera(); else show('start'); });
 
-function analyzeMain(cond) {
-  const stripes = MODES.main.targets.filter(([k]) => pts[k].length >= 3)
-    .map(([k], i) => ({ hFrac: (i + 0.5) / 4, seeds: pts[k] }));
-  // luff datum from the L/R button — a far-off point on that side orients every stripe luff→leech
+// ---------- luff side (auto-default left; one flip) ----------
+function flipLabel() { $('#flipLuff').textContent = `Luff on the ${luffSide} · tap if it's the other side`; }
+$('#flipLuff').addEventListener('click', () => { luffSide = luffSide === 'left' ? 'right' : 'left'; flipLabel(); if (analyzedOnce) runAnalyze(); });
+
+// ---------- analyze (auto) ----------
+function runAnalyze() { try { mode === 'main' ? analyzeMain() : analyzeSlot(); } catch (e) { showDecision('act', 'Could not read that — ' + e.message, ''); } }
+function analyzeMain() {
+  const stripes = MODES.main.targets.filter(([k]) => pts[k].length >= 3).map(([k], i) => ({ hFrac: (i + 0.5) / 4, seeds: pts[k] }));
   const luffPt = luffSide === 'left' ? [-1e6, canvas.height / 2] : [canvas.width + 1e6, canvas.height / 2];
-  const shot = { luff: luffPt, stripes };
-  const shape = analyzeShot(shot);
+  const shape = analyzeShot({ luff: luffPt, stripes });
+  const cond = conditions();
   const dx = diagnose(shape, { tws: cond.tws == null ? undefined : cond.tws });
-  window._lastCond = cond;
   const h = dx.headline;
-  showDecision(h.score ? 'act' : 'groove', h.action, h.control !== '—' ? `Pull: <b>${h.control}</b>. ${h.why || ''}` : '', dx.caveats);
-  $('#others').innerHTML = dx.others.length ? 'Also: ' + dx.others.map((o) => `${o.action.toLowerCase()}`).join('; ') + '.' : '';
-  renderShape(shape, dx);
+  showDecision(h.score ? 'act' : 'groove', h.action, h.control !== '—' ? `Pull: <b>${h.control}</b>. ${h.why || ''}` : '', dx.caveats,
+    dx.others.length ? 'Also: ' + dx.others.map((o) => o.action.toLowerCase()).join('; ') + '.' : '');
+  renderShape(shape, dx, cond);
 }
-
 function analyzeSlot() {
   const mk = (lo, hi) => analyzeShot({ stripes: [{ hFrac: 0.35, seeds: pts[lo] }, { hFrac: 0.75, seeds: pts[hi] }] });
   const jib = mk('jibLo', 'jibHi'), main = mk('mainLo', 'mainHi');
   const s = slotDiagnose(jib, main);
   showDecision(s.matched ? 'groove' : 'act', s.action, s.control !== '—' ? `Move: <b>${s.control}</b>.` : '',
-    ['relative reading — twist compared between the two sails; camera position affects the absolute values']);
-  $('#shapeGrp').style.display = 'block';
+    ['twist compared between the two sails; camera position affects absolute values'], '');
   $('#shape').innerHTML = `<table><thead><tr><th>Sail</th><th>Twist top→bottom</th></tr></thead><tbody>`
-    + `<tr><td>Jib</td><td class="num">${jib.twistProfileDeg}°</td></tr>`
-    + `<tr><td>Main</td><td class="num">${main.twistProfileDeg}°</td></tr>`
+    + `<tr><td>Jib</td><td class="num">${jib.twistProfileDeg}°</td></tr><tr><td>Main</td><td class="num">${main.twistProfileDeg}°</td></tr>`
     + `<tr><td>Mismatch</td><td class="num">${s.mismatchDeg >= 0 ? '+' : ''}${s.mismatchDeg}°</td></tr></tbody></table>`;
+  $('#foot').innerHTML = 'Matched = leeches parallel. Move the jib lead to close (forward) or open (aft) the jib leech to match the main.';
+  revealResult();
 }
-
-function showDecision(cls, action, cue, caveats) {
+function showDecision(cls, action, cue, caveats, others) {
   const el = $('#decision'); el.className = 'decision ' + cls;
   el.innerHTML = `<div class="a">${action}</div>` + (cue ? `<div class="c">${cue}</div>` : '')
-    + `<div class="others" id="others"></div>`
+    + (others ? `<div class="others">${others}</div>` : '')
     + ((caveats && caveats.length) ? `<div class="cav">⚠ ${caveats.join(' · ')}</div>` : '');
+  revealResult();
 }
-
-function renderShape(shape, dx) {
-  $('#shapeGrp').style.display = 'block';
-  const rows = shape.stripes.map((s) => `<tr><td>${Math.round(s.hFrac * 100)}% up</td>`
-    + `<td class="num">${s.depthPct}%</td><td class="num">${s.draftPosPct}%</td>`
-    + `<td class="num">${s.twistDeg >= 0 ? '+' : ''}${s.twistDeg}°</td>`
+function renderShape(shape, dx, cond) {
+  const rows = shape.stripes.map((s) => `<tr><td>${Math.round(s.hFrac * 100)}% up</td><td class="num">${s.depthPct}%</td>`
+    + `<td class="num">${s.draftPosPct}%</td><td class="num">${s.twistDeg >= 0 ? '+' : ''}${s.twistDeg}°</td>`
     + `<td class="num">${s.entryDeg}°</td><td class="num">${s.exitDeg}°</td></tr>`).join('');
-  const c = window._lastCond || {};
-  const condLine = [c.tws != null ? `TWS ${c.tws} kn` : null, c.aws != null ? `AWS ${c.aws} kn` : null,
-    c.awa != null ? `AWA ${c.awa}°` : null, c.sog != null ? `${c.sog} kn boatspeed` : null].filter(Boolean).join(' · ') || 'no conditions entered';
-  $('#shape').innerHTML =
-    `<div style="font-size:12.5px;color:#cfe0ef;margin:2px 0 8px">Camber (mid) <b>${shape.depthMidPct}%</b> · draft <b>${shape.stripes.length ? Math.round(shape.stripes.reduce((s, x) => s + x.draftPosPct, 0) / shape.stripes.length) : '—'}%</b> · twist top→bottom <b>${shape.twistProfileDeg}°</b> · entry <b>${shape.entryDeg}°</b> · exit <b>${shape.exitDeg}°</b> &nbsp; <span style="color:#8aa0b4">@ ${condLine}</span></div>`
-    + `<table><thead><tr><th>Height</th><th>Camber</th><th>Draft pos</th><th>Twist vs btm</th><th>Entry</th><th>Exit</th></tr></thead><tbody>${rows}</tbody></table>`;
-  $('#foot').innerHTML = `Wind band: <b>${dx.band}</b> · target source: <b>${dx.targetSource}</b>. `
-    + `Draft position and twist are the trustworthy v1 numbers; camber (depth), entry &amp; exit are relative until mast-mark calibration (v2). `
-    + `Targets are literature defaults for now — they get replaced by your own fast-shape medians as the photo library fills.`;
+  const draftMean = shape.stripes.length ? Math.round(shape.stripes.reduce((a, x) => a + x.draftPosPct, 0) / shape.stripes.length) : '—';
+  $('#shape').innerHTML = `<div style="font-size:12.5px;color:#cfe0ef;margin:2px 0 8px">Camber <b>${shape.depthMidPct}%</b> · draft <b>${draftMean}%</b> · twist <b>${shape.twistProfileDeg}°</b> · entry <b>${shape.entryDeg}°</b> · exit <b>${shape.exitDeg}°</b></div>`
+    + `<table><thead><tr><th>Height</th><th>Camber</th><th>Draft</th><th>Twist</th><th>Entry</th><th>Exit</th></tr></thead><tbody>${rows}</tbody></table>`;
+  $('#foot').innerHTML = `Wind band <b>${dx.band}</b> · target <b>${dx.targetSource}</b>. Draft &amp; twist are the trustworthy v1 numbers; camber/entry/exit firm up with mast-mark calibration.`;
 }
+function revealResult() {
+  const first = !analyzedOnce; analyzedOnce = true;
+  $('#decision').classList.remove('hide'); $('#shapeDisc').classList.remove('hide');
+  if (first) $('#decision').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function hideResult() { analyzedOnce = false; $('#decision').classList.add('hide'); $('#shapeDisc').classList.add('hide'); }
 
-// luff side + capture mode buttons
-$('#luffL').addEventListener('click', () => { luffSide = 'left'; $('#luffL').classList.add('sel'); $('#luffR').classList.remove('sel'); });
-$('#luffR').addEventListener('click', () => { luffSide = 'right'; $('#luffR').classList.add('sel'); $('#luffL').classList.remove('sel'); });
-$('#capAuto').addEventListener('click', () => { autoMode = true; $('#capAuto').classList.add('sel'); $('#capManual').classList.remove('sel'); });
-$('#capManual').addEventListener('click', () => { autoMode = false; $('#capManual').classList.add('sel'); $('#capAuto').classList.remove('sel'); });
-$('#guideBtn').addEventListener('click', () => $('#guide').classList.toggle('hidden'));
-// Mode-aware framing guide: MAIN shows the single-sail schematic, SLOT shows the two-leech schematic.
-// A real Little Johnka photo (ui/frame-guide.jpg or frame-guide-slot.jpg) overrides the drawing if present.
-function updateGuide() {
-  const isSlot = mode === 'slot';
-  const svgMain = $('#frameSvg'), svgSlot = $('#frameSvgSlot'), ref = $('#frameRef'), cap = $('#guideCap');
-  cap.innerHTML = isSlot
-    ? '<b>Look up the slot.</b> From the centreline, frame the <b style="color:#2ec77a">jib leech</b> and the <b style="color:#ff8a3c">main leech</b> together so both trailing edges show top-to-bottom. The app checks whether they are parallel (matched). In Manual, mark low + high on each leech.'
-    : '<b>Frame it like this.</b> Stand under the boom at mid-foot and point up so <b>all four draft stripes show from luff to leech</b> — include the <b class="lf">luff (mast side)</b>. Steady moment, same spot each time.';
-  const showSvg = () => { svgMain.style.display = isSlot ? 'none' : 'block'; svgSlot.style.display = isSlot ? 'block' : 'none'; ref.style.display = 'none'; };
-  showSvg();
-  if (ref) {
-    ref.onload = () => { ref.style.display = 'block'; svgMain.style.display = 'none'; svgSlot.style.display = 'none'; };
-    ref.onerror = showSvg;
-    ref.src = isSlot ? 'frame-guide-slot.jpg' : 'frame-guide.jpg';
-  }
-}
-updateGuide();
-renderTargets(); syncButtons();
+// ---------- boot ----------
+autoInstruments(); updateWind(); updateGuide(); show('start');
 </script>
 </body>
 </html>
