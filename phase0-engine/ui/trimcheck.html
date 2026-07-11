@@ -82,12 +82,31 @@
 
   <div class="controls">
     <div class="fld"><label>Take / import photo</label><input id="file" type="file" accept="image/*" /></div>
-    <div class="fld"><label>Wind (kt)</label><input id="tws" type="number" min="0" max="40" step="0.5" value="10" /></div>
+    <button class="btn" id="camBtn">📷 Camera</button>
     <button class="btn go" id="analyze" disabled>Analyze</button>
     <button class="btn" id="undo" disabled>Undo point</button>
     <button class="btn" id="clear" disabled>Clear</button>
     <button class="btn" id="guideBtn">Framing guide</button>
-    <div class="fxnote" id="hint">Pick a stripe below, then tap <b>3–5 points ALONG its curve</b> — luff end, the belly (low point of the arc), and the leech end. Two points is just a straight line with no camber, so add a middle tap. Analyze lights up once ≥2 stripes have 3+ points.</div>
+    <div class="fxnote" id="hint"><b>1-tap:</b> set the luff side, pick a stripe, then tap <b>once on that stripe</b> — the app traces the line for you. Repeat for each stripe and press Analyze. If a trace looks wrong, switch to Manual and tap 3+ points along the curve yourself.</div>
+  </div>
+
+  <div class="controls" id="cond" style="gap:10px">
+    <div class="fld"><label>Boat speed (kn)</label><input id="c_sog" type="number" step="0.1" placeholder="—" /></div>
+    <div class="fld"><label>App. wind AWS (kn)</label><input id="c_aws" type="number" step="0.1" placeholder="—" /></div>
+    <div class="fld"><label>App. wind angle AWA (°)</label><input id="c_awa" type="number" step="1" placeholder="—" /></div>
+    <div class="fld"><label>True wind TWS (kn)</label><input id="c_tws" type="number" step="0.1" value="10" /></div>
+    <button class="btn" id="autoBtn">Auto from instruments</button>
+    <div class="fxnote" id="condNote">Wind &amp; speed auto-fill from the boat's instruments when connected; override any field manually offline. <b>TWS drives the trim target</b> — it's computed from AWS, AWA and boat speed when those are present.</div>
+  </div>
+
+  <div class="targets" id="lctl" style="align-items:center">
+    <span style="font-size:12px;color:#8aa0b4;font-weight:700;margin-right:2px">Luff side</span>
+    <span class="tg sel" id="luffL" data-side="left">◀ Left</span>
+    <span class="tg" id="luffR" data-side="right">Right ▶</span>
+    <span style="display:inline-block;width:16px"></span>
+    <span style="font-size:12px;color:#8aa0b4;font-weight:700;margin-right:2px">Input</span>
+    <span class="tg sel" id="capAuto" data-cap="auto">1-tap auto</span>
+    <span class="tg" id="capManual" data-cap="manual">Manual</span>
   </div>
 
   <div class="guide" id="guide">
@@ -137,10 +156,27 @@
   <div class="targets" id="targets"></div>
   <div class="fxnote" id="ready" style="margin:0 0 8px"></div>
 
-  <div class="stage empty" id="stage">No photo yet — use "Take / import photo" above. Works offline.</div>
+  <div id="camwrap" style="display:none;position:relative;margin-bottom:12px">
+    <video id="cam" playsinline autoplay muted style="width:100%;max-height:70vh;display:block;border-radius:12px;background:#000"></video>
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
+      <line x1="50" y1="0" x2="50" y2="100" stroke="#ff5a3c" stroke-width="0.4" stroke-dasharray="2 2"/>
+      <rect x="6" y="4" width="88" height="92" rx="3" fill="none" stroke="#2E6BA8" stroke-width="0.5" stroke-dasharray="2.5 2"/>
+    </svg>
+    <div style="position:absolute;left:0;right:0;bottom:10px;display:flex;justify-content:center;gap:8px;align-items:center">
+      <span class="tg" data-zoom="0.5">.5</span><span class="tg sel" data-zoom="1">1×</span>
+      <span class="tg" data-zoom="2">2×</span><span class="tg" data-zoom="3">3×</span>
+    </div>
+    <div style="position:absolute;left:0;right:0;top:10px;display:flex;justify-content:space-between;padding:0 12px">
+      <button class="btn" id="camClose">Close</button>
+      <button class="btn go" id="shutter">Capture</button>
+    </div>
+    <div class="fxnote" id="camNote" style="position:absolute;left:12px;bottom:44px;color:#eaf1f7"></div>
+  </div>
+
+  <div class="stage empty" id="stage">No photo yet — use "Take / import photo" or 📷 Camera above. Works offline.</div>
 
   <div class="grp">The call</div>
-  <div class="decision groove" id="decision"><div class="a">Tap the luff and stripes, then Analyze.</div></div>
+  <div class="decision groove" id="decision"><div class="a">Set the luff side, tap each stripe, then Analyze.</div></div>
 
   <div class="grp" id="shapeGrp" style="display:none">Measured shape</div>
   <div id="shape"></div>
@@ -380,45 +416,187 @@ function slotDiagnose(jibShape, mainShape) {
   return { mismatchDeg: mismatch, matched: Math.abs(mismatch) <= TOL, action, control };
 }
 
+/* ---- inlined from src/stripe-detect.mjs ---- */
+// stripe-detect.mjs — from ONE tap on a draft stripe, follow the line and return the points that
+// trim-shape needs. Pure image processing on a grayscale array (no ML, no deps): find the stripe's
+// polarity at the tap (darker or lighter than its surroundings), then ridge-follow it column by
+// column left and right, snapping to the local extremum, stopping when contrast fades (edge of sail).
+//
+// Honest scope: this is validated on synthetic stripes; a real laminate sail carries battens, panel
+// seams and shadows that can pull the trace off. The UI keeps a manual fallback, and low-contrast
+// traces return few points so the caller can reject them. gray = luminance 0..255, length w*h.
+
+function traceStripe(gray, w, h, seed, opts = {}) {
+  const step = Math.max(2, opts.step || Math.round(w / 140));   // horizontal march
+  const win = Math.max(5, opts.win || Math.round(h / 45));      // vertical search half-window
+  const minContrast = opts.minContrast || 7;                    // stripe vs local background (0..255)
+  const idx = (x, y) => y * w + x;
+  const clampY = (y) => (y < 0 ? 0 : y > h - 1 ? h - 1 : y);
+  const colMean = (x, yc) => {
+    let s = 0, n = 0;
+    for (let y = clampY(yc - win); y <= clampY(yc + win); y++) { s += gray[idx(x, y)]; n++; }
+    return s / n;
+  };
+
+  let sx = Math.round(seed[0]), sy = clampY(Math.round(seed[1]));
+  sx = sx < 0 ? 0 : sx > w - 1 ? w - 1 : sx;
+  // Polarity from the STRONGEST feature in the tap's column window, not the tapped pixel itself —
+  // so a tap that lands a few px off the line still locks onto the stripe (dark seam or light stripe).
+  const mean0 = colMean(sx, sy);
+  let dev = 0;
+  for (let y = clampY(sy - win); y <= clampY(sy + win); y++) {
+    const d = gray[idx(sx, y)] - mean0;
+    if (Math.abs(d) > Math.abs(dev)) dev = d;
+  }
+  const dark = dev < 0;                                         // strongest feature darker than background?
+  const better = (a, b) => (dark ? a < b : a > b);             // seek minima if dark, else maxima
+
+  // best y in the search window at column x, near a guess yc
+  const refine = (x, yc) => {
+    let by = clampY(yc), bv = gray[idx(x, by)];
+    for (let y = clampY(yc - win); y <= clampY(yc + win); y++) {
+      const v = gray[idx(x, y)];
+      if (better(v, bv)) { bv = v; by = y; }
+    }
+    return by;
+  };
+  const contrast = (x, y) => Math.abs(gray[idx(x, y)] - colMean(x, y));
+
+  const follow = (dir) => {
+    const out = [];
+    let y = refine(sx, sy), miss = 0;
+    for (let x = sx + dir * step; x >= 0 && x < w; x += dir * step) {
+      const by = refine(x, y);
+      if (contrast(x, by) < minContrast) { if (++miss >= 3) break; } else miss = 0;
+      y = by; out.push([x, by]);
+    }
+    return out;
+  };
+
+  const pts = [...follow(-1).reverse(), [sx, refine(sx, sy)], ...follow(1)];
+  if (pts.length < 3) return pts;                               // too weak — let the caller fall back
+
+  // downsample to ~9 evenly spaced points (enough for a degree-3 stripe fit, cheap to store)
+  const N = 9;
+  if (pts.length <= N) return pts;
+  const out = [], gap = (pts.length - 1) / (N - 1);
+  for (let i = 0; i < N; i++) out.push(pts[Math.round(i * gap)]);
+  return out;
+}
+
+// Build a luminance array from RGBA pixel data (as returned by canvas getImageData().data).
+function toGray(rgba, w, h) {
+  const g = new Float32Array(w * h);
+  for (let i = 0, j = 0; j < g.length; i += 4, j++) g[j] = 0.299 * rgba[i] + 0.587 * rgba[i + 1] + 0.114 * rgba[i + 2];
+  return g;
+}
+
 
 
 const $ = (s) => document.querySelector(s);
 const COLORS = { luff: '#ffd166', s1: '#8be0a8', s2: '#7ec8ff', s3: '#c9a2ff', s4: '#ff9a8b',
                  jibLo: '#8be0a8', jibHi: '#7ec8ff', mainLo: '#ffd166', mainHi: '#ff9a8b' };
 const MODES = {
-  main: { targets: [['luff', 'Luff'], ['s1', 'Stripe 1 (bottom)'], ['s2', 'Stripe 2'], ['s3', 'Stripe 3'], ['s4', 'Stripe 4 (top)']] },
+  main: { targets: [['s1', 'Stripe 1 (bottom)'], ['s2', 'Stripe 2'], ['s3', 'Stripe 3'], ['s4', 'Stripe 4 (top)']] },
   slot: { targets: [['jibLo', 'Jib low'], ['jibHi', 'Jib high'], ['mainLo', 'Main low'], ['mainHi', 'Main high']] },
 };
-let mode = 'main', active = 'luff', pts = {}, img = null, scale = 1;
+let mode = 'main', active = 's1', pts = {}, img = null, scale = 1;
+let luffSide = 'left', autoMode = true, gray = null;   // gray = luminance of the loaded photo (for 1-tap trace)
 const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
 
 function resetPoints() { pts = {}; for (const m of Object.values(MODES)) for (const [k] of m.targets) pts[k] = []; }
 resetPoints();
 
-// ---- image load ----
+// ---- image load (shared by file import and the camera) ----
+function useImage(im) {
+  img = im;
+  const maxW = Math.min(900, $('#stage').clientWidth || 900);
+  scale = Math.min(1, maxW / im.width);
+  canvas.width = Math.round(im.width * scale); canvas.height = Math.round(im.height * scale);
+  const stage = $('#stage'); stage.classList.remove('empty'); stage.innerHTML = ''; stage.appendChild(canvas);
+  $('#guide').classList.add('hidden');                       // collapse the framing guide once a shot is in
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);     // clean draw → grayscale for 1-tap trace
+  gray = toGray(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
+  resetPoints(); draw(); syncButtons();
+}
 $('#file').addEventListener('change', (e) => {
   const f = e.target.files && e.target.files[0]; if (!f) return;
   const url = URL.createObjectURL(f);
   const im = new Image();
-  im.onload = () => {
-    img = im;
-    const maxW = Math.min(900, $('#stage').clientWidth || 900);
-    scale = Math.min(1, maxW / im.width);
-    canvas.width = Math.round(im.width * scale); canvas.height = Math.round(im.height * scale);
-    const stage = $('#stage'); stage.classList.remove('empty'); stage.innerHTML = ''; stage.appendChild(canvas);
-    $('#guide').classList.add('hidden');                     // collapse the framing guide once a shot is in
-    resetPoints(); draw(); syncButtons();
-    URL.revokeObjectURL(url);
-  };
+  im.onload = () => { useImage(im); URL.revokeObjectURL(url); };
   im.src = url;
 });
+
+// ---- live camera (getUserMedia) with a zoom selector + mast-alignment line; falls back to import ----
+let stream = null, track = null;
+async function openCamera() {
+  if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { alert('Camera not supported in this browser — use "Take / import photo".'); return; }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+    const v = $('#cam'); v.srcObject = stream; track = stream.getVideoTracks()[0];
+    $('#camwrap').style.display = 'block';
+    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    $('#camNote').textContent = (caps && caps.zoom) ? '' : 'Lens/zoom not adjustable here — pinch or move closer/further.';
+  } catch (err) { alert('Camera unavailable (' + err.name + ') — use "Take / import photo" instead.'); }
+}
+function closeCamera() { if (stream) stream.getTracks().forEach((t) => t.stop()); stream = track = null; $('#camwrap').style.display = 'none'; }
+async function setZoom(z) {
+  if (!track || !track.getCapabilities) return;
+  const caps = track.getCapabilities(); if (!caps.zoom) return;                 // web can't switch to the .5 ultrawide lens
+  const val = Math.min(caps.zoom.max, Math.max(caps.zoom.min, z));
+  try { await track.applyConstraints({ advanced: [{ zoom: val }] }); } catch (e) {}
+}
+function capture() {
+  const v = $('#cam'); if (!v.videoWidth) return;
+  const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v, 0, 0);
+  const im = new Image(); im.onload = () => { useImage(im); closeCamera(); }; im.src = c.toDataURL('image/jpeg', 0.9);
+}
+$('#camBtn').addEventListener('click', openCamera);
+$('#camClose').addEventListener('click', closeCamera);
+$('#shutter').addEventListener('click', capture);
+document.querySelectorAll('#camwrap [data-zoom]').forEach((el) => el.addEventListener('click', () => {
+  document.querySelectorAll('#camwrap [data-zoom]').forEach((z) => z.classList.toggle('sel', z === el));
+  setZoom(Number(el.dataset.zoom));
+}));
+
+// ---- conditions: auto-fill from the boat's instruments, override manually offline ----
+const numOf = (sel) => { const el = $(sel); const v = Number(el.value); return (el.value !== '' && Number.isFinite(v)) ? v : null; };
+function deriveTWS() {
+  const bs = numOf('#c_sog'), aws = numOf('#c_aws'), awa = numOf('#c_awa');
+  if (bs != null && aws != null && awa != null) {
+    const a = Math.abs(awa) * Math.PI / 180;                                    // TWS = √(AWS²+BS²−2·AWS·BS·cosAWA)
+    $('#c_tws').value = Math.sqrt(aws * aws + bs * bs - 2 * aws * bs * Math.cos(a)).toFixed(1);
+  }
+}
+['#c_sog', '#c_aws', '#c_awa'].forEach((id) => $(id).addEventListener('input', deriveTWS));
+function autoInstruments() {
+  // The below-deck iPhone (Capacitor shell) publishes YDWG-02 values on window.LJ_INSTRUMENTS as JSON.
+  const s = window.LJ_INSTRUMENTS || (window.parent && window.parent.LJ_INSTRUMENTS);
+  if (!s) { $('#condNote').innerHTML = '<b style="color:#f0d97a">No live instrument feed detected</b> — enter boat speed &amp; wind manually (offline). TWS drives the trim target.'; return; }
+  const bs = s.stw_kn != null ? s.stw_kn : s.sog_kn;
+  if (bs != null) $('#c_sog').value = Number(bs).toFixed(1);
+  if (s.aws_kn != null) $('#c_aws').value = Number(s.aws_kn).toFixed(1);
+  if (s.awa_deg != null) $('#c_awa').value = Math.round(s.awa_deg);
+  deriveTWS();
+  if (s.tws_kn != null) $('#c_tws').value = Number(s.tws_kn).toFixed(1);
+  $('#condNote').innerHTML = '<b style="color:#7ee0a8">Live from instruments</b> — override any field if it looks off.';
+}
+$('#autoBtn').addEventListener('click', autoInstruments);
+const conditions = () => ({ tws: numOf('#c_tws'), sog: numOf('#c_sog'), aws: numOf('#c_aws'), awa: numOf('#c_awa') });
 
 // ---- tapping ----
 canvas.addEventListener('pointerdown', (e) => {
   if (!img) return;
   const r = canvas.getBoundingClientRect();
   const x = (e.clientX - r.left) * (canvas.width / r.width), y = (e.clientY - r.top) * (canvas.height / r.height);
-  if (active === 'luff') pts.luff = [[x, y]]; else pts[active].push([x, y]);
+  if (autoMode && gray) {
+    // one tap → trace the whole stripe. If the trace is too weak, fall back to collecting manual taps.
+    const traced = traceStripe(gray, canvas.width, canvas.height, [x, y]);
+    if (traced.length >= 3) pts[active] = traced; else pts[active].push([x, y]);
+  } else {
+    pts[active].push([x, y]);
+  }
   draw(); renderTargets(); syncButtons();
 });
 
@@ -483,20 +661,22 @@ document.querySelectorAll('#modes .md').forEach((el) => el.addEventListener('cli
 
 // ---- analyze ----
 $('#analyze').addEventListener('click', () => {
-  const tws = Number($('#tws').value);
   try {
-    if (mode === 'main') analyzeMain(tws); else analyzeSlot();
+    if (mode === 'main') analyzeMain(conditions()); else analyzeSlot();
   } catch (err) { showDecision('act', 'Could not read that — ' + err.message, ''); }
   // the result renders below a tall photo — bring it into view so it's never "nothing happened"
   $('#decision').scrollIntoView({ behavior: 'smooth', block: 'center' });
 });
 
-function analyzeMain(tws) {
-  const stripes = MODES.main.targets.filter(([k]) => k.startsWith('s') && pts[k].length >= 3)
+function analyzeMain(cond) {
+  const stripes = MODES.main.targets.filter(([k]) => pts[k].length >= 3)
     .map(([k], i) => ({ hFrac: (i + 0.5) / 4, seeds: pts[k] }));
-  const shot = { luff: pts.luff[0] || null, stripes };
+  // luff datum from the L/R button — a far-off point on that side orients every stripe luff→leech
+  const luffPt = luffSide === 'left' ? [-1e6, canvas.height / 2] : [canvas.width + 1e6, canvas.height / 2];
+  const shot = { luff: luffPt, stripes };
   const shape = analyzeShot(shot);
-  const dx = diagnose(shape, { tws });
+  const dx = diagnose(shape, { tws: cond.tws == null ? undefined : cond.tws });
+  window._lastCond = cond;
   const h = dx.headline;
   showDecision(h.score ? 'act' : 'groove', h.action, h.control !== '—' ? `Pull: <b>${h.control}</b>. ${h.why || ''}` : '', dx.caveats);
   $('#others').innerHTML = dx.others.length ? 'Also: ' + dx.others.map((o) => `${o.action.toLowerCase()}`).join('; ') + '.' : '';
@@ -526,13 +706,25 @@ function showDecision(cls, action, cue, caveats) {
 function renderShape(shape, dx) {
   $('#shapeGrp').style.display = 'block';
   const rows = shape.stripes.map((s) => `<tr><td>${Math.round(s.hFrac * 100)}% up</td>`
-    + `<td class="num">${s.depthPct}%</td><td class="num">${s.draftPosPct}%</td><td class="num">${s.twistDeg >= 0 ? '+' : ''}${s.twistDeg}°</td></tr>`).join('');
-  $('#shape').innerHTML = `<table><thead><tr><th>Height</th><th>Depth</th><th>Draft pos</th><th>Twist vs bottom</th></tr></thead><tbody>${rows}</tbody></table>`;
+    + `<td class="num">${s.depthPct}%</td><td class="num">${s.draftPosPct}%</td>`
+    + `<td class="num">${s.twistDeg >= 0 ? '+' : ''}${s.twistDeg}°</td>`
+    + `<td class="num">${s.entryDeg}°</td><td class="num">${s.exitDeg}°</td></tr>`).join('');
+  const c = window._lastCond || {};
+  const condLine = [c.tws != null ? `TWS ${c.tws} kn` : null, c.aws != null ? `AWS ${c.aws} kn` : null,
+    c.awa != null ? `AWA ${c.awa}°` : null, c.sog != null ? `${c.sog} kn boatspeed` : null].filter(Boolean).join(' · ') || 'no conditions entered';
+  $('#shape').innerHTML =
+    `<div style="font-size:12.5px;color:#cfe0ef;margin:2px 0 8px">Camber (mid) <b>${shape.depthMidPct}%</b> · draft <b>${shape.stripes.length ? Math.round(shape.stripes.reduce((s, x) => s + x.draftPosPct, 0) / shape.stripes.length) : '—'}%</b> · twist top→bottom <b>${shape.twistProfileDeg}°</b> · entry <b>${shape.entryDeg}°</b> · exit <b>${shape.exitDeg}°</b> &nbsp; <span style="color:#8aa0b4">@ ${condLine}</span></div>`
+    + `<table><thead><tr><th>Height</th><th>Camber</th><th>Draft pos</th><th>Twist vs btm</th><th>Entry</th><th>Exit</th></tr></thead><tbody>${rows}</tbody></table>`;
   $('#foot').innerHTML = `Wind band: <b>${dx.band}</b> · target source: <b>${dx.targetSource}</b>. `
-    + `Draft position and twist are the trustworthy v1 numbers; depth is relative until mast-mark calibration (v2). `
+    + `Draft position and twist are the trustworthy v1 numbers; camber (depth), entry &amp; exit are relative until mast-mark calibration (v2). `
     + `Targets are literature defaults for now — they get replaced by your own fast-shape medians as the photo library fills.`;
 }
 
+// luff side + capture mode buttons
+$('#luffL').addEventListener('click', () => { luffSide = 'left'; $('#luffL').classList.add('sel'); $('#luffR').classList.remove('sel'); });
+$('#luffR').addEventListener('click', () => { luffSide = 'right'; $('#luffR').classList.add('sel'); $('#luffL').classList.remove('sel'); });
+$('#capAuto').addEventListener('click', () => { autoMode = true; $('#capAuto').classList.add('sel'); $('#capManual').classList.remove('sel'); });
+$('#capManual').addEventListener('click', () => { autoMode = false; $('#capManual').classList.add('sel'); $('#capAuto').classList.remove('sel'); });
 $('#guideBtn').addEventListener('click', () => $('#guide').classList.toggle('hidden'));
 // Prefer a real Little Johnka reference photo (ui/frame-guide.jpg) if present; else keep the schematic.
 (() => { const ref = $('#frameRef'); if (!ref) return;
