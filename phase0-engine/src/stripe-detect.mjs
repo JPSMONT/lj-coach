@@ -65,6 +65,38 @@ export function traceStripe(gray, w, h, seed, opts = {}) {
   return out;
 }
 
+// traceBetween — the ROBUST method for a busy real sail: the user taps the two ENDS of a stripe
+// (luff end A, leech end B) and we follow the seam BETWEEN them inside a bounded corridor around the
+// straight chord. Anchoring both ends + a corridor stops the trace jumping onto battens, other seams,
+// or shroud shadows (the failure mode of the single-tap free follower on laminate sails).
+export function traceBetween(gray, w, h, A, B, opts = {}) {
+  const idx = (x, y) => y * w + x;
+  const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+  const ax = A[0], ay = A[1], bx = B[0], by = B[1];
+  const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy);
+  if (L < 5) return [[Math.round(ax), Math.round(ay)], [Math.round(bx), Math.round(by)]];
+  const nx = -dy / L, ny = dx / L;                              // unit perpendicular to the chord
+  const steps = Math.max(8, Math.round(L / Math.max(3, opts.step || Math.round(w / 140))));
+  const maxDev = clamp(opts.maxDev || Math.round(0.18 * L), 10, 80);   // corridor half-width (camber lives here)
+  const winLocal = opts.win || Math.max(5, Math.round(maxDev * 0.5));  // per-step perpendicular search
+  const sampleAt = (t, o) => { const x = Math.round(ax + dx * t + nx * o), y = Math.round(ay + dy * t + ny * o); if (x < 0 || x >= w || y < 0 || y >= h) return null; return gray[idx(x, y)]; };
+  // polarity: strongest feature (dark seam or light stripe) across the corridor near the middle
+  let dev = 0; const m0 = (() => { let s = 0, n = 0; for (let o = -maxDev; o <= maxDev; o += 2) { const v = sampleAt(0.5, o); if (v != null) { s += v; n++; } } return n ? s / n : 128; })();
+  for (let o = -maxDev; o <= maxDev; o++) { const v = sampleAt(0.5, o); if (v != null && Math.abs(v - m0) > Math.abs(dev)) dev = v - m0; }
+  const dark = dev < 0, better = (a, b) => (dark ? a < b : a > b);
+  const out = []; let prevO = 0;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    let bo = prevO, bv = sampleAt(t, prevO); if (bv == null) bv = 128;
+    for (let o = prevO - winLocal; o <= prevO + winLocal; o++) { const v = sampleAt(t, o); if (v != null && better(v, bv)) { bv = v; bo = o; } }
+    prevO = clamp(bo, -maxDev, maxDev);
+    out.push([Math.round(ax + dx * t + nx * prevO), Math.round(ay + dy * t + ny * prevO)]);
+  }
+  out[0] = [Math.round(ax), Math.round(ay)]; out[out.length - 1] = [Math.round(bx), Math.round(by)];  // ends exact
+  if (out.length <= 9) return out;
+  const ds = [], gap = (out.length - 1) / 8; for (let i = 0; i < 9; i++) ds.push(out[Math.round(i * gap)]); return ds;
+}
+
 // Build a luminance array from RGBA pixel data (as returned by canvas getImageData().data).
 export function toGray(rgba, w, h) {
   const g = new Float32Array(w * h);

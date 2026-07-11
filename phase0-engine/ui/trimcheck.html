@@ -45,6 +45,10 @@
   .revbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
   .stage{background:#0b1622;border-radius:12px;overflow:hidden;display:flex;justify-content:center}
   canvas{display:block;max-width:100%;max-height:62vh;touch-action:none;cursor:crosshair}
+  .stagewrap{position:relative}
+  .luffbtn{position:absolute;top:8px;z-index:5;background:rgba(11,22,34,.82);color:#cfe0ef;border:1px solid #2c435a;border-radius:9px;padding:8px 12px;font-size:13px;font-weight:800;cursor:pointer}
+  .luffbtn.left{left:8px}.luffbtn.right{right:8px}
+  .luffbtn.sel{border-color:#ff5a3c;background:#20344b;color:#fff}
   .status{font-size:14px;font-weight:800;margin:11px 2px;min-height:18px}
   .status.ready{color:#7ee0a8}.status.wait{color:#f0d97a}
   .mini{font-size:12px;color:#9fb4c8;cursor:pointer;background:none;border:none;text-decoration:underline;padding:2px 4px}
@@ -155,9 +159,12 @@
       <span class="windchip" id="windChip2">Wind <b id="windVal2">10 kt</b></span>
       <button class="mini" id="undoBtn">Undo tap</button>
     </div>
-    <div class="stage" id="stage"></div>
+    <div class="stagewrap">
+      <button class="luffbtn left sel" id="luffL">◀ Luff</button>
+      <button class="luffbtn right" id="luffR">Luff ▶</button>
+      <div class="stage" id="stage"></div>
+    </div>
     <div class="status wait" id="status"></div>
-    <div style="text-align:center"><button class="mini" id="flipLuff"></button></div>
   </div>
 
   <!-- ===== RESULT ===== -->
@@ -465,6 +472,38 @@ function traceStripe(gray, w, h, seed, opts = {}) {
   return out;
 }
 
+// traceBetween — the ROBUST method for a busy real sail: the user taps the two ENDS of a stripe
+// (luff end A, leech end B) and we follow the seam BETWEEN them inside a bounded corridor around the
+// straight chord. Anchoring both ends + a corridor stops the trace jumping onto battens, other seams,
+// or shroud shadows (the failure mode of the single-tap free follower on laminate sails).
+function traceBetween(gray, w, h, A, B, opts = {}) {
+  const idx = (x, y) => y * w + x;
+  const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+  const ax = A[0], ay = A[1], bx = B[0], by = B[1];
+  const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy);
+  if (L < 5) return [[Math.round(ax), Math.round(ay)], [Math.round(bx), Math.round(by)]];
+  const nx = -dy / L, ny = dx / L;                              // unit perpendicular to the chord
+  const steps = Math.max(8, Math.round(L / Math.max(3, opts.step || Math.round(w / 140))));
+  const maxDev = clamp(opts.maxDev || Math.round(0.18 * L), 10, 80);   // corridor half-width (camber lives here)
+  const winLocal = opts.win || Math.max(5, Math.round(maxDev * 0.5));  // per-step perpendicular search
+  const sampleAt = (t, o) => { const x = Math.round(ax + dx * t + nx * o), y = Math.round(ay + dy * t + ny * o); if (x < 0 || x >= w || y < 0 || y >= h) return null; return gray[idx(x, y)]; };
+  // polarity: strongest feature (dark seam or light stripe) across the corridor near the middle
+  let dev = 0; const m0 = (() => { let s = 0, n = 0; for (let o = -maxDev; o <= maxDev; o += 2) { const v = sampleAt(0.5, o); if (v != null) { s += v; n++; } } return n ? s / n : 128; })();
+  for (let o = -maxDev; o <= maxDev; o++) { const v = sampleAt(0.5, o); if (v != null && Math.abs(v - m0) > Math.abs(dev)) dev = v - m0; }
+  const dark = dev < 0, better = (a, b) => (dark ? a < b : a > b);
+  const out = []; let prevO = 0;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    let bo = prevO, bv = sampleAt(t, prevO); if (bv == null) bv = 128;
+    for (let o = prevO - winLocal; o <= prevO + winLocal; o++) { const v = sampleAt(t, o); if (v != null && better(v, bv)) { bv = v; bo = o; } }
+    prevO = clamp(bo, -maxDev, maxDev);
+    out.push([Math.round(ax + dx * t + nx * prevO), Math.round(ay + dy * t + ny * prevO)]);
+  }
+  out[0] = [Math.round(ax), Math.round(ay)]; out[out.length - 1] = [Math.round(bx), Math.round(by)];  // ends exact
+  if (out.length <= 9) return out;
+  const ds = [], gap = (out.length - 1) / 8; for (let i = 0; i < 9; i++) ds.push(out[Math.round(i * gap)]); return ds;
+}
+
 // Build a luminance array from RGBA pixel data (as returned by canvas getImageData().data).
 function toGray(rgba, w, h) {
   const g = new Float32Array(w * h);
@@ -510,7 +549,7 @@ function updateGuide() {
   ref.src = isSlot ? 'frame-guide-slot.jpg' : 'frame-guide.jpg';
 }
 document.querySelectorAll('#modes .md').forEach((el) => el.addEventListener('click', () => {
-  mode = el.dataset.mode; resetPoints();
+  mode = el.dataset.mode; resetPoints(); anchorA = null;
   document.querySelectorAll('#modes .md').forEach((m) => m.classList.toggle('sel', m.dataset.mode === mode));
   updateGuide();
 }));
@@ -550,7 +589,7 @@ function useImage(im, source) {
   const stage = $('#stage'); stage.innerHTML = ''; stage.appendChild(canvas);
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   gray = toGray(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-  resetPoints(); draw(); flipLabel(); show('review'); status();
+  resetPoints(); anchorA = null; draw(); flipLabel(); show('review'); status();
 }
 $('#importLink').addEventListener('click', () => $('#file').click());
 $('#file').addEventListener('change', (e) => {
@@ -589,14 +628,15 @@ $('#zoomBtn').addEventListener('click', async () => {
   try { await track.applyConstraints({ advanced: [{ zoom: val }] }); } catch (e) {}
 });
 
-// ---------- tapping: one tap traces the stripe, then auto-advance + auto-analyze ----------
+// ---------- tapping: tap the two ENDS of a stripe → trace the seam between them (robust on busy sails) ----------
+let anchorA = null;
 canvas.addEventListener('pointerdown', (e) => {
   if (!img) return;
   const r = canvas.getBoundingClientRect();
   const x = (e.clientX - r.left) * (canvas.width / r.width), y = (e.clientY - r.top) * (canvas.height / r.height);
-  const traced = gray ? traceStripe(gray, canvas.width, canvas.height, [x, y]) : [];
-  if (traced.length >= 3) { pts[active] = traced; advance(); }   // good trace → next stripe
-  else pts[active].push([x, y]);                                  // weak → collect manual points here
+  if (!anchorA) { anchorA = [x, y]; draw(); status(); return; }   // first end
+  pts[active] = gray ? traceBetween(gray, canvas.width, canvas.height, anchorA, [x, y]) : [anchorA, [x, y]];
+  anchorA = null; advance();
   draw(); status(); if (canAnalyze()) runAnalyze();
 });
 function advance() {
@@ -610,12 +650,13 @@ function canAnalyze() {
 }
 function status() {
   const el = $('#status');
+  const label = (MODES[mode].targets.find(([k]) => k === active) || [null, ''])[1];
+  if (anchorA) { el.className = 'status wait'; el.innerHTML = `Now tap the <b>other end</b> of the ${label}.`; return; }
   if (canAnalyze()) { el.className = 'status ready'; el.innerHTML = 'Got it. Add more stripes to refine, or <b>Retake</b> for another shot.'; return; }
   el.className = 'status wait';
-  const label = (MODES[mode].targets.find(([k]) => k === active) || [null, ''])[1];
   const done = MODES[mode].targets.filter(([k]) => pts[k].length >= 3).length;
-  const needTxt = mode === 'main' ? 'tap 2+ stripes' : 'tap all four leech points';
-  el.innerHTML = `Tap the <b>${label}</b> once — ${needTxt}. (${done} done)`;
+  const needTxt = mode === 'main' ? 'do 2+ stripes' : 'do all four';
+  el.innerHTML = `Tap the <b>two ends</b> of the ${label} (luff end, then leech end) — ${needTxt}. (${done} done)`;
 }
 
 function draw() {
@@ -627,18 +668,25 @@ function draw() {
     if (arr.length > 1) { ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(arr[0][0], arr[0][1]); for (const p of arr.slice(1)) ctx.lineTo(p[0], p[1]); ctx.stroke(); }
     for (const p of arr) { ctx.beginPath(); ctx.arc(p[0], p[1], 5, 0, 7); ctx.fill(); }
   }
+  if (anchorA) { ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(anchorA[0], anchorA[1], 9, 0, 7); ctx.stroke(); }
 }
 $('#undoBtn').addEventListener('click', () => {
-  // undo the last stripe that has points
+  if (anchorA) { anchorA = null; draw(); status(); return; }         // cancel a half-placed stripe
   const t = MODES[mode].targets.map(([k]) => k).reverse();
-  const k = t.find((k) => pts[k].length); if (k) { pts[k].pop(); active = k; }
+  const k = t.find((k) => pts[k].length); if (k) { pts[k] = []; active = k; }
   draw(); status(); if (canAnalyze()) runAnalyze(); else hideResult();
 });
 $('#retakeBtn').addEventListener('click', () => { if (lastSource === 'camera') openCamera(); else show('start'); });
 
-// ---------- luff side (auto-default left; one flip) ----------
-function flipLabel() { $('#flipLuff').textContent = `Luff on the ${luffSide} · tap if it's the other side`; }
-$('#flipLuff').addEventListener('click', () => { luffSide = luffSide === 'left' ? 'right' : 'left'; flipLabel(); if (analyzedOnce) runAnalyze(); });
+// ---------- luff side: explicit buttons on the photo (left / right edge) ----------
+function setLuff(side) {
+  luffSide = side;
+  $('#luffL').classList.toggle('sel', side === 'left'); $('#luffR').classList.toggle('sel', side === 'right');
+  if (analyzedOnce) runAnalyze();
+}
+$('#luffL').addEventListener('click', () => setLuff('left'));
+$('#luffR').addEventListener('click', () => setLuff('right'));
+function flipLabel() { setLuff(luffSide); }
 
 // ---------- analyze (auto) ----------
 function runAnalyze() { try { mode === 'main' ? analyzeMain() : analyzeSlot(); } catch (e) { showDecision('act', 'Could not read that — ' + e.message, ''); } }

@@ -1,6 +1,6 @@
 // stripe-detect.test.mjs — verify one-tap stripe tracing recovers a KNOWN curved line, and that the
 // traced points feed trim-shape to the right depth/draft. Run: node test/stripe-detect.test.mjs
-import { traceStripe, toGray } from '../src/stripe-detect.mjs';
+import { traceStripe, traceBetween, toGray } from '../src/stripe-detect.mjs';
 import { stripeMetrics } from '../src/trim-shape.mjs';
 
 let pass = 0, fail = 0;
@@ -56,6 +56,21 @@ ok('traces a LIGHT stripe on a dark sail too', pl.length >= 5 && lErr <= 2, [pl.
 // --- toGray: RGBA → luminance ---
 const gr = toGray(new Uint8ClampedArray([255, 255, 255, 255, 0, 0, 0, 255]), 2, 1);
 ok('toGray white≈255, black≈0', Math.abs(gr[0] - 255) < 1 && gr[1] < 1, [gr[0], gr[1]]);
+
+// --- traceBetween: anchored 2-tap trace stays on the intended stripe despite a nearby DECOY line ---
+// target stripe (dark belly) + a decoy dark line ~24px above it (like an adjacent seam/batten).
+const gDecoy = new Float32Array(w * h).fill(bg);
+const yTarget = (x) => 46 + 26 * Math.sin(Math.PI * x / (w - 1));
+for (let x = 0; x < w; x++) {
+  const yt = Math.round(yTarget(x)); for (let d = -1; d <= 1; d++) { const y = yt + d; if (y >= 0 && y < h) gDecoy[y * w + x] = ink; }
+  const yd = Math.round(yTarget(x)) - 24; for (let d = -1; d <= 1; d++) { const y = yd + d; if (y >= 0 && y < h) gDecoy[y * w + x] = ink + 10; }  // decoy
+}
+const tb = traceBetween(gDecoy, w, h, [2, yTarget(2)], [w - 3, yTarget(w - 3)]);
+let tbErr = 0; for (const [x, y] of tb) tbErr = Math.max(tbErr, Math.abs(y - yTarget(x)));
+ok('anchored trace stays on target (not the decoy 24px away)', tbErr <= 3, tbErr);
+ok('endpoints are exact', Math.abs(tb[0][0] - 2) <= 1 && Math.abs(tb[tb.length - 1][0] - (w - 3)) <= 1, [tb[0], tb[tb.length - 1]]);
+const mb = stripeMetrics(tb);
+ok('anchored trace recovers depth ~13%', Math.abs(mb.depthPct - 13) < 3, mb.depthPct);
 
 console.log(`\nstripe-detect: ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
