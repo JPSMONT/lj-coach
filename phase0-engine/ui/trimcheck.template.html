@@ -347,11 +347,19 @@ function drawOverlay() {
     for (const p of s) { const t = ((p[0] - A[0]) * dx + (p[1] - A[1]) * dy) / L2, fx = A[0] + t * dx, fy = A[1] + t * dy, d = Math.hypot(p[0] - fx, p[1] - fy); if (d > maxd) { maxd = d; mp = p; foot = [fx, fy]; } }
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(foot[0], foot[1]); ctx.lineTo(mp[0], mp[1]); ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(mp[0], mp[1], fs * 0.3, 0, 7); ctx.fill();
-    const txt = `draft ${it.draftPosPct}%`;
-    ctx.font = `700 ${fs}px -apple-system,Arial,sans-serif`; const tw = ctx.measureText(txt).width;
-    let lx = mp[0] + 8, ly = mp[1] - 8; if (lx + tw + 10 > canvas.width) lx = mp[0] - tw - 14;
-    ctx.fillStyle = 'rgba(11,22,34,.82)'; rr(lx - 5, ly - fs - 3, tw + 10, fs + 8, 5); ctx.fill();
-    ctx.fillStyle = '#eaf1f7'; ctx.fillText(txt, lx, ly);
+    // DRAFT — dark box at the deepest point (by the white dot), as before
+    ctx.font = `700 ${fs}px -apple-system,Arial,sans-serif`;
+    const dtxt = `draft ${it.draftPosPct}%`, dtw = ctx.measureText(dtxt).width;
+    let lx = mp[0] + 9, ly = mp[1] - 8; if (lx + dtw + 12 > canvas.width) lx = mp[0] - dtw - 16; if (ly - fs - 4 < 0) ly = mp[1] + fs + 12;
+    ctx.fillStyle = 'rgba(11,22,34,.82)'; rr(lx - 5, ly - fs - 3, dtw + 10, fs + 8, 5); ctx.fill();
+    ctx.fillStyle = '#eaf1f7'; ctx.fillText(dtxt, lx, ly);
+    // CAMBER — separate chip in the stripe's own colour, placed at the LEECH end of the stripe
+    ctx.font = `800 ${fs}px -apple-system,Arial,sans-serif`;
+    const ctxt = `camber ~${it.depthPct}%`, ctw = ctx.measureText(ctxt).width;
+    let cx = other[0] + 8, cy = other[1]; if (cx + ctw + 12 > canvas.width) cx = other[0] - ctw - 14; if (cx < 3) cx = 3;
+    cy = Math.max(fs + 7, Math.min(canvas.height - 5, cy));
+    ctx.fillStyle = it.color; rr(cx - 6, cy - fs - 4, ctw + 12, fs + 10, 6); ctx.fill();
+    ctx.fillStyle = '#0b1622'; ctx.fillText(ctxt, cx, cy);
   }
 }
 $('#undoBtn').addEventListener('click', () => {
@@ -391,7 +399,7 @@ function analyzeMain() {
   // and a neutral reference tick at the book target (where it SHOULD be) — no green/amber verdict.
   const tgt = literatureTarget(dx.band === 'unknown' ? 'medium' : dx.band);
   const targetDraft = (tgt.draft[0] + tgt.draft[1]) / 2;
-  overlay = shape.stripes.map((st, i) => ({ seeds: pts[usedKeys[i]], draftPosPct: st.draftPosPct, color: COLORS[usedKeys[i]] || '#fff', targetDraft }));
+  overlay = shape.stripes.map((st, i) => ({ seeds: pts[usedKeys[i]], draftPosPct: st.draftPosPct, depthPct: st.depthPct, color: COLORS[usedKeys[i]] || '#fff', targetDraft }));
   $('#legend').innerHTML = `<b>White dot</b> = deepest point (draft position, the key trim number) · <b>white tick</b> = book target ≈${Math.round(targetDraft)}% aft (${dx.band} air) · shaded = camber (fullness). Draft position is set with luff / cunningham tension.`;
   $('#reading').innerHTML = explain(shape, dx, conditions()); $('#reading').classList.remove('hide');
   draw();
