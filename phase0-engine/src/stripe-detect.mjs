@@ -97,6 +97,25 @@ export function traceBetween(gray, w, h, A, B, opts = {}) {
   const ds = [], gap = (out.length - 1) / 8; for (let i = 0; i < 9; i++) ds.push(out[Math.round(i * gap)]); return ds;
 }
 
+// traceQuality — is a traced line actually sitting on a stripe? Returns the median vertical contrast
+// (a real seam differs from the cloth a few px above/below it) and the fraction of points over open sky.
+// The UI uses this to REJECT a trace that ran across the mast or sky (no stripe to follow there),
+// instead of silently accepting garbage — the failure mode on a head-on/foreshortened sail shot.
+export function traceQuality(gray, w, h, points) {
+  if (!points || points.length < 2) return { contrast: 0, skyFrac: 1 };
+  const idx = (x, y) => y * w + x;
+  const at = (x, y) => { x = Math.round(x); y = Math.round(y); if (x < 0 || x >= w || y < 0 || y >= h) return null; return gray[idx(x, y)]; };
+  const cs = []; let sky = 0, n = 0;
+  for (const [x, y] of points) {
+    const v = at(x, y); if (v == null) continue; n++;
+    if (v > 195) sky++;
+    const up = at(x, y - 6), dn = at(x, y + 6), bg = [up, dn].filter((z) => z != null);
+    if (bg.length) cs.push(Math.abs(v - bg.reduce((a, b) => a + b, 0) / bg.length));
+  }
+  cs.sort((a, b) => a - b);
+  return { contrast: cs.length ? cs[Math.floor(cs.length / 2)] : 0, skyFrac: n ? sky / n : 1 };
+}
+
 // Build a luminance array from RGBA pixel data (as returned by canvas getImageData().data).
 export function toGray(rgba, w, h) {
   const g = new Float32Array(w * h);

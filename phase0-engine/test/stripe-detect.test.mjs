@@ -1,6 +1,6 @@
 // stripe-detect.test.mjs — verify one-tap stripe tracing recovers a KNOWN curved line, and that the
 // traced points feed trim-shape to the right depth/draft. Run: node test/stripe-detect.test.mjs
-import { traceStripe, traceBetween, toGray } from '../src/stripe-detect.mjs';
+import { traceStripe, traceBetween, traceQuality, toGray } from '../src/stripe-detect.mjs';
 import { stripeMetrics } from '../src/trim-shape.mjs';
 
 let pass = 0, fail = 0;
@@ -71,6 +71,16 @@ ok('anchored trace stays on target (not the decoy 24px away)', tbErr <= 3, tbErr
 ok('endpoints are exact', Math.abs(tb[0][0] - 2) <= 1 && Math.abs(tb[tb.length - 1][0] - (w - 3)) <= 1, [tb[0], tb[tb.length - 1]]);
 const mb = stripeMetrics(tb);
 ok('anchored trace recovers depth ~13%', Math.abs(mb.depthPct - 13) < 3, mb.depthPct);
+
+// --- traceQuality: a real stripe reads high contrast + low sky; a line over sky reads the opposite ---
+const good = traceBetween(gDecoy, w, h, [2, yTarget(2)], [w - 3, yTarget(w - 3)]);
+const qGood = traceQuality(gDecoy, w, h, good);
+ok('good stripe → decent contrast', qGood.contrast >= 8, qGood.contrast);
+ok('good stripe → little sky', qGood.skyFrac < 0.2, qGood.skyFrac);
+const skyImg = new Float32Array(w * h).fill(230);              // all bright = open sky
+const qSky = traceQuality(skyImg, w, h, [[5, 20], [60, 22], [120, 24], [190, 26]]);
+ok('sky line → low contrast', qSky.contrast < 6, qSky.contrast);
+ok('sky line → high skyFrac', qSky.skyFrac > 0.8, qSky.skyFrac);
 
 console.log(`\nstripe-detect: ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
