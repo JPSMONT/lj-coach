@@ -132,7 +132,29 @@
       <g transform="translate(48 260)"><rect x="-10" y="-6" width="20" height="30" rx="4" fill="#0b1622" stroke="#eaf1f7" stroke-width="1.5"/><circle cx="0" cy="9" r="4.5" fill="none" stroke="#eaf1f7" stroke-width="1.5"/></g>
       <text x="200" y="296" text-anchor="middle" fill="#25405c" font-family="-apple-system, Arial, sans-serif" font-size="12" font-weight="700">Under the boom · point up · all 4 stripes, luff to leech</text>
     </svg>
-    <div class="cap"><b>Frame it like this.</b> Stand under the boom at mid-foot and point the phone up the sail so <b>all four draft stripes show from luff to leech</b> in one frame — include the <b class="lf">luff (mast side)</b>. Shoot in a steady moment and keep the same spot each time so readings compare. For the <b>slot</b> check, frame the jib leech and the main leech together.</div>
+    <svg id="frameSvgSlot" viewBox="0 0 400 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How to frame the jib–main slot photo" style="display:none">
+      <defs><linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9d6f5"/><stop offset="1" stop-color="#e6f3ff"/></linearGradient></defs>
+      <rect width="400" height="320" fill="url(#sky2)"/>
+      <!-- jib on the left (lighter), main on the right (darker); the SLOT is the sky wedge between their leeches -->
+      <path d="M20 60 L188 34 L206 300 L20 300 Z" fill="#c7d2dc" fill-opacity="0.92"/>
+      <path d="M236 26 L384 58 L384 300 L262 300 Z" fill="#20262f"/>
+      <!-- faint draft stripes to read as sails -->
+      <g fill="none" stroke-opacity="0.35">
+        <path d="M40 150 Q120 150 200 132" stroke="#8a97a3" stroke-width="2"/>
+        <path d="M270 150 Q330 140 384 150" stroke="#c9ccd2" stroke-width="2"/>
+      </g>
+      <!-- the two leeches the app compares: jib (green), main (orange) -->
+      <path d="M188 34 Q192 170 206 300" fill="none" stroke="#2ec77a" stroke-width="3.5"/>
+      <path d="M236 26 Q246 160 262 300" fill="none" stroke="#ff8a3c" stroke-width="3.5"/>
+      <text x="96" y="150" fill="#1f7a4a" font-family="-apple-system, Arial, sans-serif" font-size="13" font-weight="800" transform="rotate(-80 96 150)">JIB leech</text>
+      <text x="332" y="150" fill="#c2521a" font-family="-apple-system, Arial, sans-serif" font-size="13" font-weight="800" transform="rotate(-80 332 150)">MAIN leech</text>
+      <text x="216" y="118" fill="#3a5a78" font-family="-apple-system, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">slot</text>
+      <!-- target frame + stand on the centreline, sightline up the slot -->
+      <rect x="14" y="12" width="372" height="292" rx="14" fill="none" stroke="#2E6BA8" stroke-width="2" stroke-dasharray="7 6"/>
+      <line x1="210" y1="292" x2="222" y2="130" stroke="#2E6BA8" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <g transform="translate(210 296)"><rect x="-10" y="-6" width="20" height="30" rx="4" fill="#0b1622" stroke="#eaf1f7" stroke-width="1.5"/><circle cx="0" cy="9" r="4.5" fill="none" stroke="#eaf1f7" stroke-width="1.5"/></g>
+    </svg>
+    <div class="cap" id="guideCap"></div>
   </div>
 
   <div class="targets" id="targets"></div>
@@ -333,7 +355,7 @@ $('#clear').addEventListener('click', () => { resetPoints(); draw(); renderTarge
 document.querySelectorAll('#modes .md').forEach((el) => el.addEventListener('click', () => {
   mode = el.dataset.mode; active = MODES[mode].targets[0][0];
   document.querySelectorAll('#modes .md').forEach((m) => m.classList.toggle('sel', m.dataset.mode === mode));
-  renderTargets(); syncButtons();
+  renderTargets(); syncButtons(); updateGuide();
 }));
 
 // ---- analyze ----
@@ -403,11 +425,23 @@ $('#luffR').addEventListener('click', () => { luffSide = 'right'; $('#luffR').cl
 $('#capAuto').addEventListener('click', () => { autoMode = true; $('#capAuto').classList.add('sel'); $('#capManual').classList.remove('sel'); });
 $('#capManual').addEventListener('click', () => { autoMode = false; $('#capManual').classList.add('sel'); $('#capAuto').classList.remove('sel'); });
 $('#guideBtn').addEventListener('click', () => $('#guide').classList.toggle('hidden'));
-// Prefer a real Little Johnka reference photo (ui/frame-guide.jpg) if present; else keep the schematic.
-(() => { const ref = $('#frameRef'); if (!ref) return;
-  ref.onload = () => { ref.style.display = 'block'; const sv = $('#frameSvg'); if (sv) sv.style.display = 'none'; };
-  ref.onerror = () => { ref.style.display = 'none'; };
-  ref.src = 'frame-guide.jpg'; })();
+// Mode-aware framing guide: MAIN shows the single-sail schematic, SLOT shows the two-leech schematic.
+// A real Little Johnka photo (ui/frame-guide.jpg or frame-guide-slot.jpg) overrides the drawing if present.
+function updateGuide() {
+  const isSlot = mode === 'slot';
+  const svgMain = $('#frameSvg'), svgSlot = $('#frameSvgSlot'), ref = $('#frameRef'), cap = $('#guideCap');
+  cap.innerHTML = isSlot
+    ? '<b>Look up the slot.</b> From the centreline, frame the <b style="color:#2ec77a">jib leech</b> and the <b style="color:#ff8a3c">main leech</b> together so both trailing edges show top-to-bottom. The app checks whether they are parallel (matched). In Manual, mark low + high on each leech.'
+    : '<b>Frame it like this.</b> Stand under the boom at mid-foot and point up so <b>all four draft stripes show from luff to leech</b> — include the <b class="lf">luff (mast side)</b>. Steady moment, same spot each time.';
+  const showSvg = () => { svgMain.style.display = isSlot ? 'none' : 'block'; svgSlot.style.display = isSlot ? 'block' : 'none'; ref.style.display = 'none'; };
+  showSvg();
+  if (ref) {
+    ref.onload = () => { ref.style.display = 'block'; svgMain.style.display = 'none'; svgSlot.style.display = 'none'; };
+    ref.onerror = showSvg;
+    ref.src = isSlot ? 'frame-guide-slot.jpg' : 'frame-guide.jpg';
+  }
+}
+updateGuide();
 renderTargets(); syncButtons();
 </script>
 </body>
