@@ -164,7 +164,7 @@ const MODES = {
   main: { targets: [['s1', 'stripe 1 (bottom)'], ['s2', 'stripe 2'], ['s3', 'stripe 3'], ['s4', 'stripe 4 (top)']] },
   slot: { targets: [['jibLo', 'jib leech — low'], ['jibHi', 'jib leech — high'], ['mainLo', 'main leech — low'], ['mainHi', 'main leech — high']] },
 };
-let mode = 'main', active = 's1', pts = {}, img = null, gray = null, luffSide = 'left', lastSource = 'file', analyzedOnce = false;
+let mode = 'main', active = 's1', pts = {}, img = null, gray = null, rgbaBuf = null, luffSide = 'left', lastSource = 'file', analyzedOnce = false;
 const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
 function resetPoints() { pts = {}; for (const m of Object.values(MODES)) for (const [k] of m.targets) pts[k] = []; active = MODES[mode].targets[0][0]; analyzedOnce = false; }
 resetPoints();
@@ -233,7 +233,8 @@ function useImage(im, source) {
   canvas.width = Math.round(im.width * scale); canvas.height = Math.round(im.height * scale);
   const stage = $('#stage'); stage.innerHTML = ''; stage.appendChild(canvas);
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  gray = toGray(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
+  rgbaBuf = ctx.getImageData(0, 0, canvas.width, canvas.height).data;   // kept for the sail colour gate
+  gray = toGray(rgbaBuf, canvas.width, canvas.height);
   resetPoints(); anchorA = null; draw(); flipLabel(); show('review'); status();
 }
 $('#importLink').addEventListener('click', () => $('#file').click());
@@ -280,7 +281,7 @@ canvas.addEventListener('pointerdown', (e) => {
   const r = canvas.getBoundingClientRect();
   const x = (e.clientX - r.left) * (canvas.width / r.width), y = (e.clientY - r.top) * (canvas.height / r.height);
   if (!anchorA) { anchorA = [x, y]; draw(); status(); return; }   // first end
-  const traced = gray ? traceBetween(gray, canvas.width, canvas.height, anchorA, [x, y]) : [anchorA, [x, y]];
+  const traced = gray ? traceBetween(gray, canvas.width, canvas.height, anchorA, [x, y], { rgba: rgbaBuf }) : [anchorA, [x, y]];
   const q = gray ? traceQuality(gray, canvas.width, canvas.height, traced) : { contrast: 99, skyFrac: 0 };
   anchorA = null;
   if (q.contrast < 6 || q.skyFrac > 0.35) {                       // ran across sky/mast — no stripe there
