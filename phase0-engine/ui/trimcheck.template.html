@@ -408,22 +408,27 @@ function analyzeMain() {
 function explain(shape, dx, cond) {
   const tgt = literatureTarget(dx.band === 'unknown' ? 'medium' : dx.band);
   const tc = Math.round((tgt.draft[0] + tgt.draft[1]) / 2);
-  const dps = shape.stripes.map((s) => s.draftPosPct);
-  const avg = Math.round(dps.reduce((a, b) => a + b, 0) / dps.length);
+  // Read each height, don't average: the MID stripe is the reference number (sailmakers / VSPARS / North
+  // Scan quote mid-girth); position should be ~constant up the sail; depth should taper fuller-low→flatter-high.
+  const st = shape.stripes, n = st.length, midi = Math.floor((n - 1) / 2);
+  const dps = st.map((s) => s.draftPosPct);
+  const mid = Math.round(st[midi].draftPosPct);
   const twsTxt = cond.tws != null ? `${cond.tws} kt` : 'wind not set';
   let draftLine;
-  if (avg < tgt.draft[0] - 1) draftLine = `Draft is <span class="fwd">forward (~${avg}% vs ~${tc}% target)</span> — points well, fine entry, but less power. Ease luff/cunningham if you need more grunt.`;
-  else if (avg > tgt.draft[1] + 1) draftLine = `Draft is <span class="aft">aft (~${avg}% vs ~${tc}% target)</span> — powered up but draggy; the leech loads, heel &amp; weather helm build. <b>Pull luff/cunningham</b> to draw it forward.`;
-  else draftLine = `Draft <span class="on">~${avg}% — on the ~${tc}% target</span> for ${dx.band} air: a good pointing/power balance.`;
+  if (mid < tgt.draft[0] - 1) draftLine = `Draft (mid stripe) is <span class="fwd">forward (~${mid}% vs ~${tc}% target)</span> — points well, fine entry, but less power. Ease luff/cunningham for grunt.`;
+  else if (mid > tgt.draft[1] + 1) draftLine = `Draft (mid stripe) is <span class="aft">aft (~${mid}% vs ~${tc}% target)</span> — powered but draggy; the leech loads, heel &amp; helm build. <b>Pull luff/cunningham</b> to draw it forward.`;
+  else draftLine = `Draft (mid stripe) <span class="on">~${mid}% — on the ~${tc}% target</span> for ${dx.band} air: good pointing/power balance.`;
   const spread = Math.round(Math.max(...dps) - Math.min(...dps));
-  const consLine = spread <= 4 ? 'Draft position is consistent up the sail (good).' : `Draft varies ${spread}% up the sail — aim to even it out; luff tension does that.`;
+  const consLine = spread <= 4 ? 'Draft position is consistent up the sail (as it should be).' : `Draft position varies ${spread}% up the sail — it should be roughly constant; even it with luff tension.`;
+  const bot = st[0].depthPct, top = st[n - 1].depthPct;
+  const taperLine = bot >= top ? `Camber tapers as designed — fuller low (~${bot}%) → flatter up high (~${top}%).` : `Note: the top (~${top}%) is fuller than the bottom (~${bot}%) — usually you want it flatter aloft; add backstay / mast bend.`;
   const twist = Math.abs(shape.twistProfileDeg);
   const twistLine = twist > tgt.twist + tgt.twistTol ? `Top is <b>twisted open</b> (${twist}°) — spilling power up high; sheet on / lead forward to point, or leave it in the gusts.`
     : twist < tgt.twist - tgt.twistTol ? `Top is <b>closed</b> (${twist}°) — powered but can stall; ease sheet / lead aft for flow.` : `Twist ${twist}° — about right for ${dx.band} air.`;
   return `<div class="h">Reading — ${dx.band} air, ${twsTxt}</div>`
     + `<div>${draftLine}</div>`
-    + `<div class="row">${consLine} ${twistLine}</div>`
-    + `<div class="row" style="color:#8aa0b4">Draft % is measured <b>aft of the luff</b> (the side set by the <b>Luff</b> button = the mast / leading edge — set it right or the % is read from the wrong end). Depth (fullness): deeper = more power in light air &amp; chop, flatter = less drag in breeze &amp; flat water. Targets are <b>upwind</b>; reaching wants more depth and a more open leech.</div>`;
+    + `<div class="row">${consLine} ${taperLine} ${twistLine}</div>`
+    + `<div class="row" style="color:#8aa0b4"><b>Read each height, don't average:</b> <b>outhaul</b> shapes the low camber, <b>mast bend / backstay</b> flatten the top &amp; open the leech, <b>luff / cunningham</b> set draft position (≈constant up the sail), <b>sheet / vang / traveller</b> set twist. Draft % is measured aft of the <b>luff</b> — set the Luff button to the mast side. Targets are <b>upwind</b>.</div>`;
 }
 function analyzeSlot() {
   overlay = null; $('#legend').innerHTML = ''; $('#reading').classList.add('hide'); draw();  // camber overlay is main-mode only
