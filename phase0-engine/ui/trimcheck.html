@@ -65,6 +65,7 @@
   .saverow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
   .saverow .sv{padding:9px 13px}
   .saverow .sv.fast{border-color:#2aa06a;color:#7ee0a8}.saverow .sv.slow{border-color:#e0c34a;color:#f0d97a}
+  .saverow .sv.sug{box-shadow:0 0 0 2px #7ee0a8;background:#12291d}   /* auto-suggested verdict — pre-selected */
   #libnote{font-size:12px;color:#9fb4c8}
   details{margin-top:10px}summary{cursor:pointer;color:#9fb4c8;font-size:13px;font-weight:700}
   table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
@@ -689,6 +690,55 @@ function librarySummary(entries) {
   return s;
 }
 
+/* ---- inlined from src/perf-verdict.mjs ---- */
+// perf-verdict.mjs — auto-judge whether the boat was FAST at the moment of a Trim Check photo, so the
+// personal fast-shape library fills itself. "Fast" = boatspeed at/above the polar target for the wind &
+// angle. Self-contained (own polar interp + true-wind + point-of-sail) so it needs no other modules —
+// just the boat's polar (embedded in the sail data). Pure, no deps.
+//
+// When the live instrument feed is present the app can auto-save without a tap; with manually entered
+// conditions it pre-selects the suggested verdict and the skipper confirms.
+
+const REACH = [52, 60, 75, 90, 110, 120, 135, 150];
+function interpPolar(arr, grid, x) {
+  if (!arr || !arr.length) return null;
+  if (x <= grid[0]) return arr[0];
+  if (x >= grid[grid.length - 1]) return arr[arr.length - 1];
+  for (let i = 1; i < grid.length; i++) if (x <= grid[i]) { const t = (x - grid[i - 1]) / (grid[i] - grid[i - 1]); return arr[i - 1] + t * (arr[i] - arr[i - 1]); }
+  return arr[arr.length - 1];
+}
+function pointOfSail(twa) { const a = Math.abs(twa); if (a <= 55) return 'beat'; if (a >= 158) return 'run'; let best = REACH[0]; for (const x of REACH) if (Math.abs(x - a) < Math.abs(best - a)) best = x; return String(best); }
+function trueWind(awa, aws, bs) {
+  if (awa == null || aws == null || bs == null) return null;
+  const side = awa < 0 ? -1 : 1, a = Math.abs(awa) * Math.PI / 180;
+  const tws = Math.sqrt(aws * aws + bs * bs - 2 * aws * bs * Math.cos(a));
+  const twa = Math.atan2(aws * Math.sin(a), aws * Math.cos(a) - bs) * 180 / Math.PI;
+  return { tws, twa: side * twa };
+}
+
+// pct of polar from conditions + a boat polar {grid, polar:{beat_vmg,run_vmg,reach{}}}.
+// cond: { tws?, twa?, boatspeedKn, aws?, awa? } — derives tws/twa from apparent + boatspeed if needed.
+// Returns { pct, pos, targetKn, measuredKn, tws, twa } or null when there isn't enough to judge.
+function pctOfPolar(cond, polarData) {
+  const grid = polarData.grid || polarData.polar_grid, polar = polarData.polar;
+  if (!grid || !polar) return null;
+  let tws = cond.tws, twa = cond.twa; const bs = cond.boatspeedKn;
+  if ((tws == null || twa == null) && cond.aws != null && cond.awa != null && bs != null) {
+    const tw = trueWind(cond.awa, cond.aws, bs); if (tw) { if (tws == null) tws = tw.tws; if (twa == null) twa = tw.twa; }
+  }
+  if (tws == null || twa == null || bs == null || !(tws >= 6)) return null;   // below polar floor / missing data
+  const pos = pointOfSail(twa);
+  const row = pos === 'beat' ? polar.beat_vmg : pos === 'run' ? polar.run_vmg : (polar.reach && polar.reach[pos]);
+  const target = interpPolar(row, grid, tws);
+  if (!(target > 0)) return null;
+  const a = Math.abs(twa) * Math.PI / 180;
+  const measured = pos === 'beat' ? bs * Math.cos(a) : pos === 'run' ? bs * Math.abs(Math.cos(a)) : bs;   // VMG on beat/run, STW reaching
+  return { pct: measured / target, pos, targetKn: +target.toFixed(2), measuredKn: +measured.toFixed(2), tws: +tws.toFixed(1), twa: Math.round(twa) };
+}
+
+// Map a pct-of-polar to a fast/slow verdict (blank in the ambiguous middle).
+function verdictFromPct(pct, fast = 0.985, slow = 0.94) { return pct == null ? '' : pct >= fast ? 'fast' : pct <= slow ? 'slow' : ''; }
+
 /* ---- inlined from data/sail-lj-main.json ---- */
 const DATA = {
   "id": "lj-main",
@@ -715,7 +765,10 @@ const DATA = {
     "spreader_sweep_deg": 23,
     "J_mm": 3120,
     "ISP_m": 10.41
-  }
+  },
+  "_polar_note": "LJ ORC polar (2020 cert, GPH 660.2) — mirrors data/boats.json (id lj). Used to auto-judge 'fast' (boatspeed vs polar target %) so the fast-shape library fills itself.",
+  "polar_grid": [6, 8, 10, 12, 14, 16, 20],
+  "polar": {"beat_angle":[42,40.5,39.8,39.4,39.6,39.8,41.6],"beat_vmg":[3.51,4.14,4.34,4.41,4.48,4.51,4.4],"reach":{"52":[5.3,6.08,6.27,6.34,6.4,6.47,6.44],"60":[5.58,6.28,6.46,6.54,6.58,6.67,6.68],"75":[5.79,6.42,6.7,6.83,6.91,6.95,7.12],"90":[5.76,6.42,6.79,7.09,7.3,7.42,7.52],"110":[5.64,6.49,6.93,7.22,7.5,7.72,8.32],"120":[5.46,6.38,6.88,7.4,7.8,8.12,8.7],"135":[4.9,5.99,6.57,7.03,7.58,8.22,9.69],"150":[4.1,5.16,6.05,6.59,7.03,7.54,8.83]},"run_vmg":[3.55,4.47,5.28,5.93,6.48,6.89,7.86],"gybe_angle":[144.5,149,154,168,180,180,180]}
 };
 
 const $ = (s) => document.querySelector(s);
@@ -725,8 +778,11 @@ const MODES = {
   slot: { targets: [['jibLo', 'jib leech — low'], ['jibHi', 'jib leech — high'], ['mainLo', 'main leech — low'], ['mainHi', 'main leech — high']] },
 };
 let mode = 'main', active = 's1', pts = {}, img = null, gray = null, rgbaBuf = null, luffSide = 'left', lastSource = 'file', analyzedOnce = false, overlay = null;
-let trimLib = [], lastEntry = null;                            // personal fast-shape library (persisted in localStorage)
+let trimLib = [], lastEntry = null, autoSaved = false;         // personal fast-shape library (persisted in localStorage)
 const LIBKEY = 'lj-trimlib-v1';
+// live instrument feed present? (below-deck iPhone bridged to YDWG-02). When it is, a confident
+// fast/slow verdict is saved hands-free; with manual conditions we only PRE-SELECT and wait for a tap.
+const liveFeed = () => !!(window.LJ_INSTRUMENTS || (window.parent && window.parent.LJ_INSTRUMENTS));
 function loadLib() { try { trimLib = JSON.parse(localStorage.getItem(LIBKEY) || '[]') || []; } catch (e) { trimLib = []; } }
 function saveLib() { try { localStorage.setItem(LIBKEY, JSON.stringify(trimLib)); } catch (e) {} }
 const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
@@ -799,7 +855,7 @@ function useImage(im, source) {
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   rgbaBuf = ctx.getImageData(0, 0, canvas.width, canvas.height).data;   // kept for the sail colour gate
   gray = toGray(rgbaBuf, canvas.width, canvas.height);
-  resetPoints(); anchorA = null; overlay = null; $('#legend').innerHTML = ''; $('#reading').classList.add('hide'); $('#saverow').classList.add('hide'); draw(); flipLabel(); show('review'); status();
+  resetPoints(); anchorA = null; overlay = null; autoSaved = false; $('#legend').innerHTML = ''; $('#reading').classList.add('hide'); $('#saverow').classList.add('hide'); draw(); flipLabel(); show('review'); status();
 }
 $('#importLink').addEventListener('click', () => $('#file').click());
 $('#file').addEventListener('change', (e) => {
@@ -971,6 +1027,11 @@ function analyzeMain() {
   // draft mean for the library entry + target reference
   const draftMean = Math.round(shape.stripes.reduce((a, s) => a + s.draftPosPct, 0) / shape.stripes.length);
   lastEntry = { ts: Date.now(), sailId: 'main', band: dx.band, tws: cond.tws, depthPct: shape.depthMidPct, draftPct: draftMean, twistDeg: shape.twistProfileDeg, mode: shape.mode };
+  // Auto-verdict: was the boat AT/ABOVE its polar target at the moment of the shot? If so the shape was
+  // fast — the library fills itself. Needs boatspeed + wind (from apparent if TWS/TWA not given).
+  const perf = (typeof pctOfPolar === 'function' && geom && geom.polar)
+    ? pctOfPolar({ tws: cond.tws, aws: cond.aws, awa: cond.awa, boatspeedKn: cond.sog }, geom) : null;
+  if (perf) { lastEntry.pctPolar = +(perf.pct * 100).toFixed(0); lastEntry.autoVerdict = verdictFromPct(perf.pct); }
   // Evidence-based readout: draft POSITION is the key stripe number. Target = YOUR fast shapes if available,
   // else the textbook band. Deepest point (draft IS) vs a reference tick (draft SHOULD).
   const tgt = resolveTarget(dx.band === 'unknown' ? 'medium' : dx.band, personal);
@@ -981,8 +1042,20 @@ function analyzeMain() {
   $('#legend').innerHTML = `<b>White dot</b> = deepest point (draft position) · <b>white tick</b> = ${tgtLabel} ≈${Math.round(targetDraft)}% aft (${dx.band} air) · shaded = camber. `
     + (absolute ? `Camber is <b style="color:#7ee0a8">calibrated to the sail's design planform</b> (absolute).` : `Camber is <b>~approximate</b> (relative — sail geometry not loaded).`);
   $('#reading').innerHTML = explain(shape, dx, cond, tgt); $('#reading').classList.remove('hide');
-  $('#saverow').classList.remove('hide'); updateLibNote();
+  renderSaveRow(perf);
   draw();
+}
+// Show the save row, PRE-SELECT the auto-suggested verdict, and — only with a live feed — save it hands-free.
+function renderSaveRow(perf) {
+  $('#saverow').classList.remove('hide');
+  document.querySelectorAll('#saverow .sv').forEach((b) => b.classList.remove('sug'));
+  const sug = lastEntry && lastEntry.autoVerdict;                 // 'fast' | 'slow' | ''
+  if (sug) { const b = document.querySelector(`#saverow .sv[data-v="${sug}"]`); if (b) b.classList.add('sug'); }
+  autoSaved = false;
+  if (perf && sug && liveFeed()) {                               // hands-free save when instruments are live
+    trimLib.push({ ...lastEntry, verdict: sug, auto: true }); saveLib(); autoSaved = true;
+  }
+  updateLibNote(perf);
 }
 // Plain-language, evidence-based readout (what the numbers say + the advice + a teaching line).
 function explain(shape, dx, cond, tgt) {
@@ -1050,17 +1123,28 @@ function revealResult() {
 function hideResult() { analyzedOnce = false; overlay = null; $('#legend').innerHTML = ''; $('#reading').classList.add('hide'); $('#saverow').classList.add('hide'); $('#decision').classList.add('hide'); $('#shapeDisc').classList.add('hide'); }
 
 // ---------- personal fast-shape library ----------
-function updateLibNote() {
+function updateLibNote(perf) {
   const el = $('#libnote'); if (!el || !lastEntry) return;
   const b = lastEntry.band === 'unknown' ? 'medium' : lastEntry.band;
   const s = librarySummary(trimLib)[b] || { fast: 0, total: 0 };
   const p = personalTargets(trimLib)[b];
-  el.innerHTML = p
-    ? `Library: <b style="color:#7ee0a8">${s.fast} fast shapes (${b})</b> — target is now from YOUR boat.`
-    : `Library: ${s.fast} fast (${b}) — need 3 to set a personal target (still textbook).`;
+  const lib = p
+    ? `<b style="color:#7ee0a8">${s.fast} fast (${b})</b> — target from YOUR boat`
+    : `${s.fast} fast (${b}) — need 3 for a personal target`;
+  let perfTxt;
+  if (perf) {                                                    // % of polar + what it suggests
+    const sug = lastEntry.autoVerdict, tag = sug === 'fast' ? '<b style="color:#7ee0a8">fast</b>' : sug === 'slow' ? '<b style="color:#f0d97a">slow</b>' : '<b>on pace</b>';
+    perfTxt = ` · this shot <b>${lastEntry.pctPolar}%</b> of polar (${perf.pos}) → ${tag}`;
+  } else {
+    perfTxt = ` · <span style="color:#8aa0b4">no speed/wind entered → tag it by hand</span>`;
+  }
+  const undo = autoSaved ? ` · <b style="color:#7ee0a8">auto-saved</b> <button class="btn sv" id="undoSave" style="padding:3px 9px;font-size:11.5px">Undo</button>` : '';
+  el.innerHTML = `Library: ${lib}${perfTxt}${undo}`;
+  const u = $('#undoSave'); if (u) u.onclick = () => { if (autoSaved && trimLib.length) trimLib.pop(); saveLib(); autoSaved = false; updateLibNote(perf); };
 }
 document.querySelectorAll('#saverow .sv').forEach((el) => el.addEventListener('click', () => {
-  if (!lastEntry) return;
+  if (!lastEntry || el.id === 'undoSave') return;
+  if (autoSaved && trimLib.length) { trimLib.pop(); autoSaved = false; }   // manual tap overrides the auto-saved entry
   trimLib.push({ ...lastEntry, verdict: el.dataset.v }); saveLib();
   updateLibNote();
   if (el.dataset.v === 'fast' && analyzedOnce) runAnalyze();   // a new fast shape may set/refresh the personal target

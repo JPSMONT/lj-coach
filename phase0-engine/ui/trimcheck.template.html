@@ -63,6 +63,7 @@
   .saverow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
   .saverow .sv{padding:9px 13px}
   .saverow .sv.fast{border-color:#2aa06a;color:#7ee0a8}.saverow .sv.slow{border-color:#e0c34a;color:#f0d97a}
+  .saverow .sv.sug{box-shadow:0 0 0 2px #7ee0a8;background:#12291d}   /* auto-suggested verdict — pre-selected */
   #libnote{font-size:12px;color:#9fb4c8}
   details{margin-top:10px}summary{cursor:pointer;color:#9fb4c8;font-size:13px;font-weight:700}
   table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
@@ -182,8 +183,11 @@ const MODES = {
   slot: { targets: [['jibLo', 'jib leech — low'], ['jibHi', 'jib leech — high'], ['mainLo', 'main leech — low'], ['mainHi', 'main leech — high']] },
 };
 let mode = 'main', active = 's1', pts = {}, img = null, gray = null, rgbaBuf = null, luffSide = 'left', lastSource = 'file', analyzedOnce = false, overlay = null;
-let trimLib = [], lastEntry = null;                            // personal fast-shape library (persisted in localStorage)
+let trimLib = [], lastEntry = null, autoSaved = false;         // personal fast-shape library (persisted in localStorage)
 const LIBKEY = 'lj-trimlib-v1';
+// live instrument feed present? (below-deck iPhone bridged to YDWG-02). When it is, a confident
+// fast/slow verdict is saved hands-free; with manual conditions we only PRE-SELECT and wait for a tap.
+const liveFeed = () => !!(window.LJ_INSTRUMENTS || (window.parent && window.parent.LJ_INSTRUMENTS));
 function loadLib() { try { trimLib = JSON.parse(localStorage.getItem(LIBKEY) || '[]') || []; } catch (e) { trimLib = []; } }
 function saveLib() { try { localStorage.setItem(LIBKEY, JSON.stringify(trimLib)); } catch (e) {} }
 const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
@@ -256,7 +260,7 @@ function useImage(im, source) {
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   rgbaBuf = ctx.getImageData(0, 0, canvas.width, canvas.height).data;   // kept for the sail colour gate
   gray = toGray(rgbaBuf, canvas.width, canvas.height);
-  resetPoints(); anchorA = null; overlay = null; $('#legend').innerHTML = ''; $('#reading').classList.add('hide'); $('#saverow').classList.add('hide'); draw(); flipLabel(); show('review'); status();
+  resetPoints(); anchorA = null; overlay = null; autoSaved = false; $('#legend').innerHTML = ''; $('#reading').classList.add('hide'); $('#saverow').classList.add('hide'); draw(); flipLabel(); show('review'); status();
 }
 $('#importLink').addEventListener('click', () => $('#file').click());
 $('#file').addEventListener('change', (e) => {
@@ -428,6 +432,11 @@ function analyzeMain() {
   // draft mean for the library entry + target reference
   const draftMean = Math.round(shape.stripes.reduce((a, s) => a + s.draftPosPct, 0) / shape.stripes.length);
   lastEntry = { ts: Date.now(), sailId: 'main', band: dx.band, tws: cond.tws, depthPct: shape.depthMidPct, draftPct: draftMean, twistDeg: shape.twistProfileDeg, mode: shape.mode };
+  // Auto-verdict: was the boat AT/ABOVE its polar target at the moment of the shot? If so the shape was
+  // fast — the library fills itself. Needs boatspeed + wind (from apparent if TWS/TWA not given).
+  const perf = (typeof pctOfPolar === 'function' && geom && geom.polar)
+    ? pctOfPolar({ tws: cond.tws, aws: cond.aws, awa: cond.awa, boatspeedKn: cond.sog }, geom) : null;
+  if (perf) { lastEntry.pctPolar = +(perf.pct * 100).toFixed(0); lastEntry.autoVerdict = verdictFromPct(perf.pct); }
   // Evidence-based readout: draft POSITION is the key stripe number. Target = YOUR fast shapes if available,
   // else the textbook band. Deepest point (draft IS) vs a reference tick (draft SHOULD).
   const tgt = resolveTarget(dx.band === 'unknown' ? 'medium' : dx.band, personal);
@@ -438,8 +447,20 @@ function analyzeMain() {
   $('#legend').innerHTML = `<b>White dot</b> = deepest point (draft position) · <b>white tick</b> = ${tgtLabel} ≈${Math.round(targetDraft)}% aft (${dx.band} air) · shaded = camber. `
     + (absolute ? `Camber is <b style="color:#7ee0a8">calibrated to the sail's design planform</b> (absolute).` : `Camber is <b>~approximate</b> (relative — sail geometry not loaded).`);
   $('#reading').innerHTML = explain(shape, dx, cond, tgt); $('#reading').classList.remove('hide');
-  $('#saverow').classList.remove('hide'); updateLibNote();
+  renderSaveRow(perf);
   draw();
+}
+// Show the save row, PRE-SELECT the auto-suggested verdict, and — only with a live feed — save it hands-free.
+function renderSaveRow(perf) {
+  $('#saverow').classList.remove('hide');
+  document.querySelectorAll('#saverow .sv').forEach((b) => b.classList.remove('sug'));
+  const sug = lastEntry && lastEntry.autoVerdict;                 // 'fast' | 'slow' | ''
+  if (sug) { const b = document.querySelector(`#saverow .sv[data-v="${sug}"]`); if (b) b.classList.add('sug'); }
+  autoSaved = false;
+  if (perf && sug && liveFeed()) {                               // hands-free save when instruments are live
+    trimLib.push({ ...lastEntry, verdict: sug, auto: true }); saveLib(); autoSaved = true;
+  }
+  updateLibNote(perf);
 }
 // Plain-language, evidence-based readout (what the numbers say + the advice + a teaching line).
 function explain(shape, dx, cond, tgt) {
@@ -507,17 +528,28 @@ function revealResult() {
 function hideResult() { analyzedOnce = false; overlay = null; $('#legend').innerHTML = ''; $('#reading').classList.add('hide'); $('#saverow').classList.add('hide'); $('#decision').classList.add('hide'); $('#shapeDisc').classList.add('hide'); }
 
 // ---------- personal fast-shape library ----------
-function updateLibNote() {
+function updateLibNote(perf) {
   const el = $('#libnote'); if (!el || !lastEntry) return;
   const b = lastEntry.band === 'unknown' ? 'medium' : lastEntry.band;
   const s = librarySummary(trimLib)[b] || { fast: 0, total: 0 };
   const p = personalTargets(trimLib)[b];
-  el.innerHTML = p
-    ? `Library: <b style="color:#7ee0a8">${s.fast} fast shapes (${b})</b> — target is now from YOUR boat.`
-    : `Library: ${s.fast} fast (${b}) — need 3 to set a personal target (still textbook).`;
+  const lib = p
+    ? `<b style="color:#7ee0a8">${s.fast} fast (${b})</b> — target from YOUR boat`
+    : `${s.fast} fast (${b}) — need 3 for a personal target`;
+  let perfTxt;
+  if (perf) {                                                    // % of polar + what it suggests
+    const sug = lastEntry.autoVerdict, tag = sug === 'fast' ? '<b style="color:#7ee0a8">fast</b>' : sug === 'slow' ? '<b style="color:#f0d97a">slow</b>' : '<b>on pace</b>';
+    perfTxt = ` · this shot <b>${lastEntry.pctPolar}%</b> of polar (${perf.pos}) → ${tag}`;
+  } else {
+    perfTxt = ` · <span style="color:#8aa0b4">no speed/wind entered → tag it by hand</span>`;
+  }
+  const undo = autoSaved ? ` · <b style="color:#7ee0a8">auto-saved</b> <button class="btn sv" id="undoSave" style="padding:3px 9px;font-size:11.5px">Undo</button>` : '';
+  el.innerHTML = `Library: ${lib}${perfTxt}${undo}`;
+  const u = $('#undoSave'); if (u) u.onclick = () => { if (autoSaved && trimLib.length) trimLib.pop(); saveLib(); autoSaved = false; updateLibNote(perf); };
 }
 document.querySelectorAll('#saverow .sv').forEach((el) => el.addEventListener('click', () => {
-  if (!lastEntry) return;
+  if (!lastEntry || el.id === 'undoSave') return;
+  if (autoSaved && trimLib.length) { trimLib.pop(); autoSaved = false; }   // manual tap overrides the auto-saved entry
   trimLib.push({ ...lastEntry, verdict: el.dataset.v }); saveLib();
   updateLibNote();
   if (el.dataset.v === 'fast' && analyzedOnce) runAnalyze();   // a new fast shape may set/refresh the personal target
