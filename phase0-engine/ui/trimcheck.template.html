@@ -56,6 +56,10 @@
   .decision .c{font-size:13px;color:#cfe0ef;margin-top:6px}.decision .c b{color:#ffd9a0}
   .decision .others{font-size:12.5px;color:#9fb4c8;margin-top:6px;line-height:1.5}
   .cav{font-size:11.5px;color:#e0c34a;margin-top:9px;line-height:1.5}
+  .reading{font-size:13px;color:#cfe0ef;line-height:1.55;background:#16273a;border:1px solid #23384e;border-radius:12px;padding:12px 14px;margin-top:10px}
+  .reading b{color:#eaf1f7}.reading .fwd{color:#7ec8ff}.reading .aft{color:#ffb27a}.reading .on{color:#7ee0a8}
+  .reading .h{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#8aa0b4;font-weight:800;margin-bottom:5px}
+  .reading .row{margin-top:7px}
   details{margin-top:10px}summary{cursor:pointer;color:#9fb4c8;font-size:13px;font-weight:700}
   table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
   th{text-align:left;color:#8aa0b4;font-size:10px;text-transform:uppercase;border-bottom:1px solid #2c435a;padding:5px 6px}
@@ -152,6 +156,7 @@
 
   <!-- ===== RESULT ===== -->
   <div class="decision groove hide" id="decision"></div>
+  <div id="reading" class="reading hide"></div>
   <details id="shapeDisc" class="hide"><summary>Show shape numbers</summary><div id="shape"></div><div class="cap" id="foot" style="text-align:left"></div></details>
 </div>
 
@@ -388,10 +393,32 @@ function analyzeMain() {
   const targetDraft = (tgt.draft[0] + tgt.draft[1]) / 2;
   overlay = shape.stripes.map((st, i) => ({ seeds: pts[usedKeys[i]], draftPosPct: st.draftPosPct, color: COLORS[usedKeys[i]] || '#fff', targetDraft }));
   $('#legend').innerHTML = `<b>White dot</b> = deepest point (draft position, the key trim number) · <b>white tick</b> = book target ≈${Math.round(targetDraft)}% aft (${dx.band} air) · shaded = camber (fullness). Draft position is set with luff / cunningham tension.`;
+  $('#reading').innerHTML = explain(shape, dx, conditions()); $('#reading').classList.remove('hide');
   draw();
 }
+// Plain-language, evidence-based readout (what the numbers say + the advice + a teaching line).
+function explain(shape, dx, cond) {
+  const tgt = literatureTarget(dx.band === 'unknown' ? 'medium' : dx.band);
+  const tc = Math.round((tgt.draft[0] + tgt.draft[1]) / 2);
+  const dps = shape.stripes.map((s) => s.draftPosPct);
+  const avg = Math.round(dps.reduce((a, b) => a + b, 0) / dps.length);
+  const twsTxt = cond.tws != null ? `${cond.tws} kt` : 'wind not set';
+  let draftLine;
+  if (avg < tgt.draft[0] - 1) draftLine = `Draft is <span class="fwd">forward (~${avg}% vs ~${tc}% target)</span> — points well, fine entry, but less power. Ease luff/cunningham if you need more grunt.`;
+  else if (avg > tgt.draft[1] + 1) draftLine = `Draft is <span class="aft">aft (~${avg}% vs ~${tc}% target)</span> — powered up but draggy; the leech loads, heel &amp; weather helm build. <b>Pull luff/cunningham</b> to draw it forward.`;
+  else draftLine = `Draft <span class="on">~${avg}% — on the ~${tc}% target</span> for ${dx.band} air: a good pointing/power balance.`;
+  const spread = Math.round(Math.max(...dps) - Math.min(...dps));
+  const consLine = spread <= 4 ? 'Draft position is consistent up the sail (good).' : `Draft varies ${spread}% up the sail — aim to even it out; luff tension does that.`;
+  const twist = Math.abs(shape.twistProfileDeg);
+  const twistLine = twist > tgt.twist + tgt.twistTol ? `Top is <b>twisted open</b> (${twist}°) — spilling power up high; sheet on / lead forward to point, or leave it in the gusts.`
+    : twist < tgt.twist - tgt.twistTol ? `Top is <b>closed</b> (${twist}°) — powered but can stall; ease sheet / lead aft for flow.` : `Twist ${twist}° — about right for ${dx.band} air.`;
+  return `<div class="h">Reading — ${dx.band} air, ${twsTxt}</div>`
+    + `<div>${draftLine}</div>`
+    + `<div class="row">${consLine} ${twistLine}</div>`
+    + `<div class="row" style="color:#8aa0b4">Draft % is measured <b>aft of the luff</b> (the side set by the <b>Luff</b> button = the mast / leading edge — set it right or the % is read from the wrong end). Depth (fullness): deeper = more power in light air &amp; chop, flatter = less drag in breeze &amp; flat water. Targets are <b>upwind</b>; reaching wants more depth and a more open leech.</div>`;
+}
 function analyzeSlot() {
-  overlay = null; $('#legend').innerHTML = ''; draw();             // camber overlay is a main-mode thing
+  overlay = null; $('#legend').innerHTML = ''; $('#reading').classList.add('hide'); draw();  // camber overlay is main-mode only
   const mk = (lo, hi) => analyzeShot({ stripes: [{ hFrac: 0.35, seeds: pts[lo] }, { hFrac: 0.75, seeds: pts[hi] }] });
   const jib = mk('jibLo', 'jibHi'), main = mk('mainLo', 'mainHi');
   const s = slotDiagnose(jib, main);
@@ -424,7 +451,7 @@ function revealResult() {
   $('#decision').classList.remove('hide'); $('#shapeDisc').classList.remove('hide');
   if (first) $('#decision').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
-function hideResult() { analyzedOnce = false; overlay = null; $('#legend').innerHTML = ''; $('#decision').classList.add('hide'); $('#shapeDisc').classList.add('hide'); }
+function hideResult() { analyzedOnce = false; overlay = null; $('#legend').innerHTML = ''; $('#reading').classList.add('hide'); $('#decision').classList.add('hide'); $('#shapeDisc').classList.add('hide'); }
 
 // ---------- boot ----------
 autoInstruments(); updateWind(); updateGuide(); show('start');

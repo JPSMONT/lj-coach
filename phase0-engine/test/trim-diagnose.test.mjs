@@ -36,8 +36,8 @@ ok('fwd draft → ease luff tension', /forward/i.test(d.headline.action), d.head
 d = diagnose(shape({ depth: 11, draft: 46, twist: 16 }), { tws: 10 });
 ok('twist open → close leech', /twisted open/i.test(d.headline.action) && /mainsheet|vang/.test(d.headline.control), d.headline);
 
-// --- too DEEP in heavy air (depth 14 vs heavy 7–9) in ABSOLUTE mode → flatten headline ---
-d = diagnose(shape({ mode: 'absolute', depth: 14, draft: 50, twist: 5 }), { tws: 18 });
+// --- too DEEP in heavy air (depth 14 vs heavy 9–12) in ABSOLUTE mode, draft on-target → flatten headline ---
+d = diagnose(shape({ mode: 'absolute', depth: 14, draft: 45, twist: 5 }), { tws: 18 });
 ok('deep + absolute → flatten headline', /too deep/i.test(d.headline.action) && /backstay|outhaul/.test(d.headline.control), d.headline);
 
 // --- same deep shape in RELATIVE mode: depth down-weighted, so a small draft error can outrank it ---

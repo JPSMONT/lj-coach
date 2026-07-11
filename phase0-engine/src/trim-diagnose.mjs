@@ -17,10 +17,13 @@ export function windBand(tws) {
 // top-vs-bottom chord (degrees, magnitude). Ranges are [lo, hi]; `twist` is a nominal magnitude ± tol.
 // ASSUMPTION (flag it): generic keel-boat numbers, to be OVERWRITTEN per cell by LJ's own fast-shape
 // medians as the photo library fills. Not gospel — a starting point so diagnosis works on day one.
+// Evidence-based (SAIL Magazine "Mainsail Trim 101"; Speed & Smarts; UK Sailmakers; SailZing):
+// depth falls and draft is held ~45% aft as breeze builds (cunningham pulls it forward vs the wind
+// pushing it aft). Light air runs deeper AND further aft (~50%). Upwind values.
 const LIT = {
-  light:  { depth: [12, 15], draft: [45, 50], twist: 12, twistTol: 4 },
-  medium: { depth: [10, 12], draft: [45, 48], twist: 8,  twistTol: 4 },
-  heavy:  { depth: [7, 9],   draft: [48, 52], twist: 5,  twistTol: 3 },
+  light:  { depth: [13, 16], draft: [48, 52], twist: 12, twistTol: 4 },
+  medium: { depth: [11, 13], draft: [43, 47], twist: 8,  twistTol: 4 },
+  heavy:  { depth: [9, 12],  draft: [43, 46], twist: 5,  twistTol: 3 },
 };
 
 export function literatureTarget(band) {
