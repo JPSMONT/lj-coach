@@ -281,15 +281,9 @@ canvas.addEventListener('pointerdown', (e) => {
   const r = canvas.getBoundingClientRect();
   const x = (e.clientX - r.left) * (canvas.width / r.width), y = (e.clientY - r.top) * (canvas.height / r.height);
   if (!anchorA) { anchorA = [x, y]; draw(); status(); return; }   // first end
-  const traced = gray ? traceBetween(gray, canvas.width, canvas.height, anchorA, [x, y], { rgba: rgbaBuf }) : [anchorA, [x, y]];
-  const q = gray ? traceQuality(gray, canvas.width, canvas.height, traced) : { contrast: 99, skyFrac: 0 };
-  anchorA = null;
-  if (q.contrast < 6 || q.skyFrac > 0.35) {                       // ran across sky/mast — no stripe there
-    $('#status').className = 'status wait';
-    $('#status').innerHTML = 'No clear stripe between those points — keep both ends on the <b>sailcloth</b>, on one visible stripe (away from the mast &amp; sky). Only need 2–3 good stripes.';
-    draw(); return;
-  }
-  pts[active] = traced; advance();
+  // second end → Viterbi trace of the seam between the taps (already sail-constrained via the colour gate)
+  pts[active] = gray ? traceBetween(gray, canvas.width, canvas.height, anchorA, [x, y], { rgba: rgbaBuf }) : [anchorA, [x, y]];
+  anchorA = null; advance();
   draw(); status(); if (canAnalyze()) runAnalyze();
 });
 function advance() {
