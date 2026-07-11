@@ -355,7 +355,7 @@ function drawOverlay() {
     ctx.fillStyle = '#eaf1f7'; ctx.fillText(dtxt, lx, ly);
     // CAMBER — separate chip in the stripe's own colour, placed at the LEECH end of the stripe
     ctx.font = `800 ${fs}px -apple-system,Arial,sans-serif`;
-    const ctxt = `camber ~${it.depthPct}%`, ctw = ctx.measureText(ctxt).width;
+    const ctxt = (it.absolute ? `camber ${it.depthPct}%` : `camber ~${it.depthPct}%`), ctw = ctx.measureText(ctxt).width;
     let cx = other[0] + 8, cy = other[1]; if (cx + ctw + 12 > canvas.width) cx = other[0] - ctw - 14; if (cx < 3) cx = 3;
     cy = Math.max(fs + 7, Math.min(canvas.height - 5, cy));
     ctx.fillStyle = it.color; rr(cx - 6, cy - fs - 4, ctw + 12, fs + 10, 6); ctx.fill();
@@ -386,7 +386,23 @@ function analyzeMain() {
   const usedKeys = MODES.main.targets.filter(([k]) => pts[k].length >= 3).map(([k]) => k);
   const stripes = usedKeys.map((k, i) => ({ hFrac: (i + 0.5) / 4, seeds: pts[k] }));
   const luffPt = luffSide === 'left' ? [-1e6, canvas.height / 2] : [canvas.width + 1e6, canvas.height / 2];
-  const shape = analyzeShot({ luff: luffPt, stripes });
+  // planform calibration: if the sail's design geometry is loaded, solve the perspective from the tapped
+  // stripe ends → ABSOLUTE camber (drops the ~). Falls back to relative if unavailable/degenerate.
+  let warp = null;
+  const geom = (typeof DATA !== 'undefined' && DATA) ? DATA : null;
+  if (geom && usedKeys.length >= 2) {
+    const stripesImg = usedKeys.map((k) => {
+      const s = pts[k], A = s[0], B = s[s.length - 1], luffEnd = ((A[0] <= B[0]) === (luffSide === 'left')) ? A : B;
+      return { luffEnd, leechEnd: luffEnd === A ? B : A };
+    });
+    const cal = calibrate(stripesImg, geom); if (cal) warp = cal.warp;
+  }
+  let shape = analyzeShot({ luff: luffPt, stripes }, warp ? { warp } : {});
+  // guard: if calibration returns implausible shape (stripes not aligned to the design stations, or
+  // geometry off), fall back to the relative reading rather than show nonsense.
+  if (warp && !shape.stripes.every((s) => s.depthPct >= 2 && s.depthPct <= 25 && s.draftPosPct >= 15 && s.draftPosPct <= 85)) {
+    warp = null; shape = analyzeShot({ luff: luffPt, stripes });
+  }
   const cond = conditions();
   const dx = diagnose(shape, { tws: cond.tws == null ? undefined : cond.tws });
   const h = dx.headline;
@@ -399,8 +415,10 @@ function analyzeMain() {
   // and a neutral reference tick at the book target (where it SHOULD be) — no green/amber verdict.
   const tgt = literatureTarget(dx.band === 'unknown' ? 'medium' : dx.band);
   const targetDraft = (tgt.draft[0] + tgt.draft[1]) / 2;
-  overlay = shape.stripes.map((st, i) => ({ seeds: pts[usedKeys[i]], draftPosPct: st.draftPosPct, depthPct: st.depthPct, color: COLORS[usedKeys[i]] || '#fff', targetDraft }));
-  $('#legend').innerHTML = `<b>White dot</b> = deepest point (draft position, the key trim number) · <b>white tick</b> = book target ≈${Math.round(targetDraft)}% aft (${dx.band} air) · shaded = camber (fullness). Draft position is set with luff / cunningham tension.`;
+  const absolute = shape.mode === 'absolute';
+  overlay = shape.stripes.map((st, i) => ({ seeds: pts[usedKeys[i]], draftPosPct: st.draftPosPct, depthPct: st.depthPct, absolute, color: COLORS[usedKeys[i]] || '#fff', targetDraft }));
+  $('#legend').innerHTML = `<b>White dot</b> = deepest point (draft position) · <b>white tick</b> = book target ≈${Math.round(targetDraft)}% aft (${dx.band} air) · shaded = camber. `
+    + (absolute ? `Camber is <b style="color:#7ee0a8">calibrated to the sail's design planform</b> (absolute).` : `Camber is <b>~approximate</b> (relative — sail geometry not loaded).`);
   $('#reading').innerHTML = explain(shape, dx, conditions()); $('#reading').classList.remove('hide');
   draw();
 }
@@ -457,7 +475,10 @@ function renderShape(shape, dx, cond) {
   const draftMean = shape.stripes.length ? Math.round(shape.stripes.reduce((a, x) => a + x.draftPosPct, 0) / shape.stripes.length) : '—';
   $('#shape').innerHTML = `<div style="font-size:12.5px;color:#cfe0ef;margin:2px 0 8px">Camber <b>${shape.depthMidPct}%</b> · draft <b>${draftMean}%</b> · twist <b>${shape.twistProfileDeg}°</b> · entry <b>${shape.entryDeg}°</b> · exit <b>${shape.exitDeg}°</b></div>`
     + `<table><thead><tr><th>Height</th><th>Camber</th><th>Draft</th><th>Twist</th><th>Entry</th><th>Exit</th></tr></thead><tbody>${rows}</tbody></table>`;
-  $('#foot').innerHTML = `Wind band <b>${dx.band}</b> · target <b>${dx.targetSource}</b>. Draft &amp; twist are the trustworthy v1 numbers; camber/entry/exit firm up with mast-mark calibration.`;
+  $('#foot').innerHTML = `Wind band <b>${dx.band}</b> · target <b>${dx.targetSource}</b>. `
+    + (shape.mode === 'absolute'
+      ? `Camber is <b>calibrated</b> to the Ceccarelli design planform (absolute).`
+      : `Draft &amp; twist are the trustworthy numbers; camber is approximate (sail geometry not loaded).`);
 }
 function revealResult() {
   const first = !analyzedOnce; analyzedOnce = true;

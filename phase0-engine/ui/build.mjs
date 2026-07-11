@@ -50,7 +50,7 @@ const TARGETS = [
   { template: 'ui/trimlab.template.html', out: 'ui/trimlab.html', modules: [], data: 'data/trimlab-demo.json' },
   { template: 'ui/venue.template.html',   out: 'ui/venue.html',   modules: [], data: 'data/venues' },
   { template: 'ui/plan.template.html',    out: 'ui/plan.html',    modules: ['ratings', 'engine', 'planner'], data: [['DATA', 'data/venues'], ['BOATS', 'data/boats.json']] },
-  { template: 'ui/trimcheck.template.html', out: 'ui/trimcheck.html', modules: ['trim-shape', 'trim-diagnose', 'stripe-detect'], data: null },
+  { template: 'ui/trimcheck.template.html', out: 'ui/trimcheck.html', modules: ['trim-shape', 'trim-diagnose', 'stripe-detect', 'calibrate'], data: 'data/sail-lj-main.json' },
 ];
 
 // One app, four pages: a shared sticky nav is injected into every generated page so they

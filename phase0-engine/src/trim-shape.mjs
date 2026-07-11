@@ -79,12 +79,16 @@ export function stripeMetrics(seeds, luff = null) {
 }
 
 // Analyse a whole shot. `shot.stripes` are ordered BOTTOM → TOP (low on the sail first); each is
-// { seeds:[[x,y],…] }. Optional `shot.luff` disambiguates stripe orientation. v1 → mode "relative".
-export function analyzeShot(shot) {
+// { seeds:[[x,y],…] }. Optional `shot.luff` disambiguates stripe orientation.
+// opts.warp (from calibrate.mjs) maps image pixels → the fronto-parallel design planform (mm): when
+// supplied, every metric is computed in that rectified frame → mode "absolute" (camber is a true
+// depth/chord ratio). Without it → mode "relative" (camera-biased depth). See calibrate.mjs.
+export function analyzeShot(shot, opts = {}) {
   const stripesIn = (shot && shot.stripes) || [];
   if (stripesIn.length < 2) throw new Error('need ≥2 stripes to measure twist');
-  const luff = shot.luff || null;
-  const m = stripesIn.map((st) => stripeMetrics(st.seeds, luff));
+  const warp = (opts && opts.warp) || null;
+  const luff = warp ? [-1e9, 0] : (shot.luff || null);        // rectified: luff sits at x=0, so far-left = luff
+  const m = stripesIn.map((st) => stripeMetrics(warp ? st.seeds.map(warp) : st.seeds, luff));
   const base = m[0].chordBearingDeg;                          // twist datum = bottom stripe (relative mode)
   const heights = stripesIn.map((st, i) => (st.hFrac != null ? st.hFrac : i / (stripesIn.length - 1)));
   const stripes = m.map((mm, i) => ({
@@ -94,7 +98,7 @@ export function analyzeShot(shot) {
     entryDeg: mm.entryDeg, exitDeg: mm.exitDeg,
   }));
   const warnings = [];
-  if (!luff) warnings.push('no luff datum tapped — stripe orientation assumed from seed order');
+  if (!warp && !shot.luff) warnings.push('no luff datum tapped — stripe orientation assumed from seed order');
   if (stripesIn.some((st) => st.seeds.length < 4)) warnings.push('some stripes have only 3 seeds — draft position is unreliable (a 3-point fit is forced symmetric, so it reports ~50% regardless of the true belly)');
   // mid-camber = the middle stripe (average the two middle for an even count, so a 2-stripe shot
   // doesn't silently report the BOTTOM stripe as "mid").
@@ -102,7 +106,7 @@ export function analyzeShot(shot) {
     ? stripes[(n - 1) / 2].depthPct
     : +((stripes[n / 2 - 1].depthPct + stripes[n / 2].depthPct) / 2).toFixed(2);
   return {
-    mode: 'relative',                                        // v2 (mast marks) → 'absolute'
+    mode: warp ? 'absolute' : 'relative',                    // absolute when calibrated to the design planform
     stripes,
     twistProfileDeg: stripes[stripes.length - 1].twistDeg,   // top vs bottom
     entryDeg: +(stripes.reduce((s, x) => s + x.entryDeg, 0) / stripes.length).toFixed(1),

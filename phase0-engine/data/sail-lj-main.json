@@ -1,0 +1,27 @@
+{
+  "id": "lj-main",
+  "name": "Little Johnka mainsail — Ceccarelli CYD27",
+  "source": "Ceccarelli CYD27 sail plan (uploads/CYD27 Sail Plans). Some values OCR'd from a low-res scan — confirm MGM and spreader lengths against the source CAD.",
+  "luff_mm": 11150,
+  "foot_mm": 4100,
+  "leech_mm": 11673,
+  "head_mm": 184,
+  "_note": "stations = ORC-style mainsail girths; chord_mm = real cross-section (chord) length at that height; height_frac = height up the luff as a fraction of P (estimated — refine from the CAD). The draft stripes sit at these stations, so each is a known-length ruler for perspective calibration.",
+  "stations": [
+    { "name": "MGL", "chord_mm": 3440, "height_frac": 0.25 },
+    { "name": "MGM", "chord_mm": 2640, "height_frac": 0.50 },
+    { "name": "MGU", "chord_mm": 1560, "height_frac": 0.75 },
+    { "name": "MGT", "chord_mm": 850,  "height_frac": 0.875 }
+  ],
+  "rig": {
+    "type": "fractional, 2 spreaders",
+    "panel_base_to_lower_mm": 3912,
+    "panel_lower_to_upper_mm": 3406,
+    "panel_upper_to_top_mm": 3174,
+    "spreader_lower_len_mm": 686,
+    "spreader_upper_len_mm": 723,
+    "spreader_sweep_deg": 23,
+    "J_mm": 3120,
+    "ISP_m": 10.41
+  }
+}
