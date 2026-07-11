@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<!-- SOURCE TEMPLATE for trimcheck.html. Do NOT edit trimcheck.html by hand.
+     Trim Check (v1, relative): import a sail photo, tap the luff + draft stripes, get the ONE trim
+     action for the current wind. Runs the SAME audited trim-shape + trim-diagnose modules the tests
+     verify. Edit this + src/trim-shape.mjs + src/trim-diagnose.mjs, then: node ui/build.mjs -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Trim Check — LJ Coach</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0f1c2b;color:#eaf1f7}
+  .wrap{max-width:940px;margin:0 auto;padding:18px}
+  h1{font-size:20px;margin:0 0 2px}
+  .sub{color:#8aa0b4;font-size:12.5px;margin-bottom:12px;line-height:1.5}
+  .modes{display:flex;gap:7px;margin:2px 0 12px}
+  .md{font-size:12.5px;font-weight:800;padding:6px 13px;border-radius:10px;background:#16273a;border:1px solid #2c435a;color:#9fb4c8;cursor:pointer}
+  .md.sel{background:#20344b;border-color:#ff5a3c;color:#eaf1f7}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;background:#16273a;border:1px solid #23384e;border-radius:12px;padding:12px 14px;margin-bottom:12px}
+  .fld label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:#8aa0b4;margin-bottom:4px;font-weight:700}
+  .fld input[type=number]{width:92px;background:#0f1c2b;border:1px solid #2c435a;border-radius:9px;color:#eaf1f7;font-size:16px;font-weight:700;padding:8px 10px}
+  .btn{border:1px solid #2c435a;background:#16273a;border-radius:9px;padding:9px 14px;font-size:13px;font-weight:800;color:#eaf1f7;cursor:pointer}
+  .btn.go{background:#2E6BA8;border-color:#2E6BA8}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .fxnote{font-size:11px;color:#8aa0b4;flex-basis:100%}
+  .targets{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 8px}
+  .tg{font-size:12px;font-weight:800;padding:5px 11px;border-radius:9px;background:#16273a;border:1px solid #2c435a;color:#9fb4c8;cursor:pointer}
+  .tg.sel{border-color:#ff5a3c;color:#eaf1f7;background:#20344b}
+  .tg .n{display:inline-block;min-width:16px;text-align:center;font-size:10px;color:#7ee0a8;margin-left:5px}
+  .stage{position:relative;background:#0b1622;border:1px dashed #2c435a;border-radius:12px;overflow:hidden;min-height:220px;display:flex;align-items:center;justify-content:center}
+  .stage.empty{color:#6f889e;font-size:13px;padding:40px}
+  canvas{display:block;max-width:100%;touch-action:none;cursor:crosshair}
+  .grp{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#8aa0b4;margin:16px 2px 7px;font-weight:700}
+  .decision{background:linear-gradient(180deg,#132536,#101f2e);border:1px solid #2c435a;border-left:6px solid #2E6BA8;border-radius:14px;padding:16px 18px}
+  .decision.act{border-left-color:#ff8a3c}.decision.groove{border-left-color:#2aa06a}
+  .decision .a{font-size:21px;font-weight:900;line-height:1.2}
+  .decision .c{font-size:13px;color:#cfe0ef;margin-top:6px}
+  .decision .c b{color:#ffd9a0}
+  .cav{font-size:11.5px;color:#e0c34a;margin-top:9px;line-height:1.5}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+  th{text-align:left;color:#8aa0b4;font-size:10px;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #2c435a;padding:5px 7px}
+  td{padding:5px 7px;border-bottom:1px solid #1b2c40}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+  .others{font-size:12.5px;color:#9fb4c8;line-height:1.6;margin-top:6px}
+  .foot{color:#6f889e;font-size:11px;margin-top:16px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Trim Check</h1>
+  <div class="sub">Photograph the sail, tap the luff and the draft stripes, and get the one control to pull for today's wind. Decision first — the shape numbers are below it. v1 is a relative reading: draft position and twist are trustworthy; absolute depth firms up once the mast marks are calibrated.</div>
+
+  <div class="modes" id="modes">
+    <span class="md sel" data-mode="main">Main shape</span>
+    <span class="md" data-mode="slot">Jib–main slot</span>
+  </div>
+
+  <div class="controls">
+    <div class="fld"><label>Take / import photo</label><input id="file" type="file" accept="image/*" /></div>
+    <div class="fld"><label>Wind (kt)</label><input id="tws" type="number" min="0" max="40" step="0.5" value="10" /></div>
+    <button class="btn go" id="analyze" disabled>Analyze</button>
+    <button class="btn" id="undo" disabled>Undo point</button>
+    <button class="btn" id="clear" disabled>Clear</button>
+    <div class="fxnote" id="hint">Import a photo, then pick a target below and tap along it. Shoot from under the boom looking up so every stripe shows luff-to-leech.</div>
+  </div>
+
+  <div class="targets" id="targets"></div>
+
+  <div class="stage empty" id="stage">No photo yet — use "Take / import photo" above. Works offline.</div>
+
+  <div class="grp">The call</div>
+  <div class="decision groove" id="decision"><div class="a">Tap the luff and stripes, then Analyze.</div></div>
+
+  <div class="grp" id="shapeGrp" style="display:none">Measured shape</div>
+  <div id="shape"></div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script type="module">
+//__ENGINE__//
+//__DATA__//
+
+const $ = (s) => document.querySelector(s);
+const COLORS = { luff: '#ffd166', s1: '#8be0a8', s2: '#7ec8ff', s3: '#c9a2ff', s4: '#ff9a8b',
+                 jibLo: '#8be0a8', jibHi: '#7ec8ff', mainLo: '#ffd166', mainHi: '#ff9a8b' };
+const MODES = {
+  main: { targets: [['luff', 'Luff'], ['s1', 'Stripe 1 (bottom)'], ['s2', 'Stripe 2'], ['s3', 'Stripe 3'], ['s4', 'Stripe 4 (top)']] },
+  slot: { targets: [['jibLo', 'Jib low'], ['jibHi', 'Jib high'], ['mainLo', 'Main low'], ['mainHi', 'Main high']] },
+};
+let mode = 'main', active = 'luff', pts = {}, img = null, scale = 1;
+const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
+
+function resetPoints() { pts = {}; for (const m of Object.values(MODES)) for (const [k] of m.targets) pts[k] = []; }
+resetPoints();
+
+// ---- image load ----
+$('#file').addEventListener('change', (e) => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const url = URL.createObjectURL(f);
+  const im = new Image();
+  im.onload = () => {
+    img = im;
+    const maxW = Math.min(900, $('#stage').clientWidth || 900);
+    scale = Math.min(1, maxW / im.width);
+    canvas.width = Math.round(im.width * scale); canvas.height = Math.round(im.height * scale);
+    const stage = $('#stage'); stage.classList.remove('empty'); stage.innerHTML = ''; stage.appendChild(canvas);
+    resetPoints(); draw(); syncButtons();
+    URL.revokeObjectURL(url);
+  };
+  im.src = url;
+});
+
+// ---- tapping ----
+canvas.addEventListener('pointerdown', (e) => {
+  if (!img) return;
+  const r = canvas.getBoundingClientRect();
+  const x = (e.clientX - r.left) * (canvas.width / r.width), y = (e.clientY - r.top) * (canvas.height / r.height);
+  if (active === 'luff') pts.luff = [[x, y]]; else pts[active].push([x, y]);
+  draw(); renderTargets(); syncButtons();
+});
+
+function draw() {
+  if (!img) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  for (const key of Object.keys(pts)) {
+    const arr = pts[key]; if (!arr.length) continue;
+    ctx.strokeStyle = ctx.fillStyle = COLORS[key] || '#fff';
+    if (arr.length > 1) { ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(arr[0][0], arr[0][1]); for (const p of arr.slice(1)) ctx.lineTo(p[0], p[1]); ctx.stroke(); }
+    for (const p of arr) { ctx.beginPath(); ctx.arc(p[0], p[1], 6, 0, 7); ctx.fill(); }
+  }
+}
+
+// ---- target chips ----
+function renderTargets() {
+  $('#targets').innerHTML = MODES[mode].targets.map(([k, label]) =>
+    `<span class="tg ${k === active ? 'sel' : ''}" data-k="${k}">${label}<span class="n">${pts[k].length || ''}</span></span>`).join('');
+  document.querySelectorAll('#targets .tg').forEach((el) => el.addEventListener('click', () => { active = el.dataset.k; renderTargets(); }));
+}
+
+function syncButtons() {
+  const has = Object.values(pts).some((a) => a.length);
+  $('#undo').disabled = $('#clear').disabled = !has;
+  $('#analyze').disabled = !img || !canAnalyze();
+}
+function canAnalyze() {
+  if (mode === 'main') return MODES.main.targets.filter(([k]) => k.startsWith('s') && pts[k].length >= 3).length >= 2;
+  return ['jibLo', 'jibHi', 'mainLo', 'mainHi'].every((k) => pts[k].length >= 3);
+}
+
+$('#undo').addEventListener('click', () => { const a = pts[active]; if (a && a.length) a.pop(); draw(); renderTargets(); syncButtons(); });
+$('#clear').addEventListener('click', () => { resetPoints(); draw(); renderTargets(); syncButtons(); });
+
+document.querySelectorAll('#modes .md').forEach((el) => el.addEventListener('click', () => {
+  mode = el.dataset.mode; active = MODES[mode].targets[0][0];
+  document.querySelectorAll('#modes .md').forEach((m) => m.classList.toggle('sel', m.dataset.mode === mode));
+  renderTargets(); syncButtons();
+}));
+
+// ---- analyze ----
+$('#analyze').addEventListener('click', () => {
+  const tws = Number($('#tws').value);
+  try {
+    if (mode === 'main') analyzeMain(tws); else analyzeSlot();
+  } catch (err) { showDecision('act', 'Could not read that — ' + err.message, ''); }
+});
+
+function analyzeMain(tws) {
+  const stripes = MODES.main.targets.filter(([k]) => k.startsWith('s') && pts[k].length >= 3)
+    .map(([k], i) => ({ hFrac: (i + 0.5) / 4, seeds: pts[k] }));
+  const shot = { luff: pts.luff[0] || null, stripes };
+  const shape = analyzeShot(shot);
+  const dx = diagnose(shape, { tws });
+  const h = dx.headline;
+  showDecision(h.score ? 'act' : 'groove', h.action, h.control !== '—' ? `Pull: <b>${h.control}</b>. ${h.why || ''}` : '', dx.caveats);
+  $('#others').innerHTML = dx.others.length ? 'Also: ' + dx.others.map((o) => `${o.action.toLowerCase()}`).join('; ') + '.' : '';
+  renderShape(shape, dx);
+}
+
+function analyzeSlot() {
+  const mk = (lo, hi) => analyzeShot({ stripes: [{ hFrac: 0.35, seeds: pts[lo] }, { hFrac: 0.75, seeds: pts[hi] }] });
+  const jib = mk('jibLo', 'jibHi'), main = mk('mainLo', 'mainHi');
+  const s = slotDiagnose(jib, main);
+  showDecision(s.matched ? 'groove' : 'act', s.action, s.control !== '—' ? `Move: <b>${s.control}</b>.` : '',
+    ['relative reading — twist compared between the two sails; camera position affects the absolute values']);
+  $('#shapeGrp').style.display = 'block';
+  $('#shape').innerHTML = `<table><thead><tr><th>Sail</th><th>Twist top→bottom</th></tr></thead><tbody>`
+    + `<tr><td>Jib</td><td class="num">${jib.twistProfileDeg}°</td></tr>`
+    + `<tr><td>Main</td><td class="num">${main.twistProfileDeg}°</td></tr>`
+    + `<tr><td>Mismatch</td><td class="num">${s.mismatchDeg >= 0 ? '+' : ''}${s.mismatchDeg}°</td></tr></tbody></table>`;
+}
+
+function showDecision(cls, action, cue, caveats) {
+  const el = $('#decision'); el.className = 'decision ' + cls;
+  el.innerHTML = `<div class="a">${action}</div>` + (cue ? `<div class="c">${cue}</div>` : '')
+    + `<div class="others" id="others"></div>`
+    + ((caveats && caveats.length) ? `<div class="cav">⚠ ${caveats.join(' · ')}</div>` : '');
+}
+
+function renderShape(shape, dx) {
+  $('#shapeGrp').style.display = 'block';
+  const rows = shape.stripes.map((s) => `<tr><td>${Math.round(s.hFrac * 100)}% up</td>`
+    + `<td class="num">${s.depthPct}%</td><td class="num">${s.draftPosPct}%</td><td class="num">${s.twistDeg >= 0 ? '+' : ''}${s.twistDeg}°</td></tr>`).join('');
+  $('#shape').innerHTML = `<table><thead><tr><th>Height</th><th>Depth</th><th>Draft pos</th><th>Twist vs bottom</th></tr></thead><tbody>${rows}</tbody></table>`;
+  $('#foot').innerHTML = `Wind band: <b>${dx.band}</b> · target source: <b>${dx.targetSource}</b>. `
+    + `Draft position and twist are the trustworthy v1 numbers; depth is relative until mast-mark calibration (v2). `
+    + `Targets are literature defaults for now — they get replaced by your own fast-shape medians as the photo library fills.`;
+}
+
+renderTargets(); syncButtons();
+</script>
+</body>
+</html>

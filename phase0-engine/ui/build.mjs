@@ -50,13 +50,14 @@ const TARGETS = [
   { template: 'ui/trimlab.template.html', out: 'ui/trimlab.html', modules: [], data: 'data/trimlab-demo.json' },
   { template: 'ui/venue.template.html',   out: 'ui/venue.html',   modules: [], data: 'data/venues' },
   { template: 'ui/plan.template.html',    out: 'ui/plan.html',    modules: ['ratings', 'engine', 'planner'], data: [['DATA', 'data/venues'], ['BOATS', 'data/boats.json']] },
+  { template: 'ui/trimcheck.template.html', out: 'ui/trimcheck.html', modules: ['trim-shape', 'trim-diagnose'], data: null },
 ];
 
 // One app, four pages: a shared sticky nav is injected into every generated page so they
 // cross-link and feel like a single app, while each page stays self-contained (opens offline,
 // keeps its own audited engine inline). Order matches TARGETS.
 // Rivals folded into Debrief (route-split) per the 8-Jul usability reframe — standalone tab retired.
-const NAV_TABS = [['compare.html', 'Compare'], ['venue.html', 'Venue'], ['plan.html', 'Plan'], ['cockpit.html', 'Cockpit'], ['debrief.html', 'Debrief'], ['trimlab.html', 'Trim Lab']];
+const NAV_TABS = [['compare.html', 'Compare'], ['venue.html', 'Venue'], ['plan.html', 'Plan'], ['cockpit.html', 'Cockpit'], ['debrief.html', 'Debrief'], ['trimcheck.html', 'Trim Check'], ['trimlab.html', 'Trim Lab']];
 const NAV_CSS = `<style>/* injected by build.mjs — shared nav */
 .ljnav{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:2px;padding:8px 14px;background:#0b1622;border-bottom:1px solid #23384e;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
 .ljnav .brand{display:inline-flex;align-items:center;background:#fff;border-radius:6px;padding:3px 7px;margin-right:14px}
@@ -78,7 +79,7 @@ const SW_REG = `<script>if('serviceWorker' in navigator){addEventListener('load'
 for (const t of TARGETS) {
   let out = read(t.template)
     .replace('//__ENGINE__//', () => bundle(t.modules))
-    .replace('//__DATA__//', () => dataDecl(t.data));
+    .replace('//__DATA__//', () => t.data ? dataDecl(t.data) : '');
   if (out.includes('//__ENGINE__//') || out.includes('//__DATA__//')) {
     throw new Error(`build: a placeholder was not replaced in ${t.template}`);
   }
