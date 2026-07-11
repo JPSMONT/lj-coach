@@ -32,7 +32,7 @@
   .tg .n{display:inline-block;min-width:16px;text-align:center;font-size:10px;color:#7ee0a8;margin-left:5px}
   .stage{position:relative;background:#0b1622;border:1px dashed #2c435a;border-radius:12px;overflow:hidden;min-height:220px;display:flex;align-items:center;justify-content:center}
   .stage.empty{color:#6f889e;font-size:13px;padding:40px}
-  canvas{display:block;max-width:100%;touch-action:none;cursor:crosshair}
+  canvas{display:block;max-width:100%;max-height:70vh;touch-action:none;cursor:crosshair}
   .grp{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#8aa0b4;margin:16px 2px 7px;font-weight:700}
   .decision{background:linear-gradient(180deg,#132536,#101f2e);border:1px solid #2c435a;border-left:6px solid #2E6BA8;border-radius:14px;padding:16px 18px}
   .decision.act{border-left-color:#ff8a3c}.decision.groove{border-left-color:#2aa06a}
@@ -46,6 +46,12 @@
   td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
   .others{font-size:12.5px;color:#9fb4c8;line-height:1.6;margin-top:6px}
   .foot{color:#6f889e;font-size:11px;margin-top:16px;line-height:1.6}
+  .guide{background:#0d1a28;border:1px solid #23384e;border-radius:12px;padding:12px 14px;margin-bottom:12px}
+  .guide.hidden{display:none}
+  .guide svg{width:100%;max-width:360px;height:auto;display:block;margin:0 auto;border-radius:10px}
+  .guide .cap{font-size:12px;color:#9fb4c8;line-height:1.6;margin-top:9px}
+  .guide .cap b{color:#eaf1f7}
+  .guide .cap .lf{color:#ff8a6b}
 </style>
 <style>/* injected by build.mjs — shared nav */
 .ljnav{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:2px;padding:8px 14px;background:#0b1622;border-bottom:1px solid #23384e;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
@@ -80,10 +86,56 @@
     <button class="btn go" id="analyze" disabled>Analyze</button>
     <button class="btn" id="undo" disabled>Undo point</button>
     <button class="btn" id="clear" disabled>Clear</button>
-    <div class="fxnote" id="hint">Import a photo, then pick a target below and tap along it. Shoot from under the boom looking up so every stripe shows luff-to-leech.</div>
+    <button class="btn" id="guideBtn">Framing guide</button>
+    <div class="fxnote" id="hint">Pick a stripe below, then tap <b>3–5 points ALONG its curve</b> — luff end, the belly (low point of the arc), and the leech end. Two points is just a straight line with no camber, so add a middle tap. Analyze lights up once ≥2 stripes have 3+ points.</div>
+  </div>
+
+  <div class="guide" id="guide">
+    <!-- If a real Little Johnka up-the-sail photo is dropped in as ui/frame-guide.jpg it is used
+         automatically; otherwise the schematic below is shown. (Never ship a watermarked stock photo.) -->
+    <img id="frameRef" alt="Framing reference — a real Little Johnka up-the-sail photo" style="width:100%;max-width:360px;display:none;border-radius:10px;margin:0 auto" />
+    <svg id="frameSvg" viewBox="0 0 400 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How to frame the sail photo">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9d6f5"/><stop offset="1" stop-color="#e6f3ff"/></linearGradient>
+        <linearGradient id="sailg" x1="0.15" y1="0" x2="0.85" y2="1"><stop offset="0" stop-color="#11151b"/><stop offset="0.55" stop-color="#20262f"/><stop offset="1" stop-color="#2b333d"/></linearGradient>
+      </defs>
+      <rect width="400" height="320" fill="url(#sky)"/>
+      <!-- mainsail from below the boom, looking up the luff: head top, tack near camera (lower-left), clew lower-right -->
+      <path d="M150 20 L52 262 L340 205 Z" fill="url(#sailg)"/>
+      <!-- leech / mast spar down the right side (the dark bar in a real up-the-sail shot) -->
+      <path d="M150 20 L340 205" stroke="#05070a" stroke-width="5" stroke-linecap="round"/>
+      <path d="M150 20 L340 205" stroke="#3a4552" stroke-width="1.4" stroke-linecap="round"/>
+      <!-- luff (mast side) emphasised -->
+      <line x1="52" y1="262" x2="150" y2="20" stroke="#ff5a3c" stroke-width="3"/>
+      <!-- faint rigging crossing the frame, like real shrouds -->
+      <g stroke="#0e1a28" stroke-opacity="0.20" stroke-width="1">
+        <line x1="8" y1="300" x2="250" y2="40"/><line x1="380" y1="300" x2="150" y2="35"/><line x1="120" y1="315" x2="330" y2="120"/>
+      </g>
+      <!-- four draft stripes, luff to leech, bellied; a grey seam shadow under a white line gives depth -->
+      <g fill="none">
+        <path d="M73.6 206.1 Q185 205 296.6 164.7" stroke="#c9ccd2" stroke-opacity="0.5" stroke-width="5"/>
+        <path d="M73.6 206.1 Q185 205 296.6 164.7" stroke="#fff" stroke-width="3"/>
+        <path d="M93.2 158.9 Q176 160 259.0 128.1" stroke="#c9ccd2" stroke-opacity="0.5" stroke-width="4.4"/>
+        <path d="M93.2 158.9 Q176 160 259.0 128.1" stroke="#fff" stroke-width="2.6"/>
+        <path d="M112.8 111.7 Q167 115 221.4 91.5" stroke="#c9ccd2" stroke-opacity="0.5" stroke-width="4"/>
+        <path d="M112.8 111.7 Q167 115 221.4 91.5" stroke="#fff" stroke-width="2.3"/>
+        <path d="M132.4 64.5 Q158 69 183.8 54.9" stroke="#c9ccd2" stroke-opacity="0.5" stroke-width="3.4"/>
+        <path d="M132.4 64.5 Q158 69 183.8 54.9" stroke="#fff" stroke-width="2"/>
+      </g>
+      <!-- sail number to evoke LJ -->
+      <text x="150" y="118" fill="#d21f1f" font-family="Arial, sans-serif" font-weight="900" font-size="18" transform="rotate(-9 150 118)">SUI 6116</text>
+      <!-- target frame -->
+      <rect x="38" y="10" width="324" height="262" rx="14" fill="none" stroke="#2E6BA8" stroke-width="2" stroke-dasharray="7 6"/>
+      <!-- where you stand: phone at the tack, sightline up the sail -->
+      <line x1="55" y1="246" x2="120" y2="120" stroke="#2E6BA8" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <g transform="translate(48 260)"><rect x="-10" y="-6" width="20" height="30" rx="4" fill="#0b1622" stroke="#eaf1f7" stroke-width="1.5"/><circle cx="0" cy="9" r="4.5" fill="none" stroke="#eaf1f7" stroke-width="1.5"/></g>
+      <text x="200" y="296" text-anchor="middle" fill="#25405c" font-family="-apple-system, Arial, sans-serif" font-size="12" font-weight="700">Under the boom · point up · all 4 stripes, luff to leech</text>
+    </svg>
+    <div class="cap"><b>Frame it like this.</b> Stand under the boom at mid-foot and point the phone up the sail so <b>all four draft stripes show from luff to leech</b> in one frame — include the <b class="lf">luff (mast side)</b>. Shoot in a steady moment and keep the same spot each time so readings compare. For the <b>slot</b> check, frame the jib leech and the main leech together.</div>
   </div>
 
   <div class="targets" id="targets"></div>
+  <div class="fxnote" id="ready" style="margin:0 0 8px"></div>
 
   <div class="stage empty" id="stage">No photo yet — use "Take / import photo" above. Works offline.</div>
 
@@ -354,6 +406,7 @@ $('#file').addEventListener('change', (e) => {
     scale = Math.min(1, maxW / im.width);
     canvas.width = Math.round(im.width * scale); canvas.height = Math.round(im.height * scale);
     const stage = $('#stage'); stage.classList.remove('empty'); stage.innerHTML = ''; stage.appendChild(canvas);
+    $('#guide').classList.add('hidden');                     // collapse the framing guide once a shot is in
     resetPoints(); draw(); syncButtons();
     URL.revokeObjectURL(url);
   };
@@ -392,6 +445,27 @@ function syncButtons() {
   const has = Object.values(pts).some((a) => a.length);
   $('#undo').disabled = $('#clear').disabled = !has;
   $('#analyze').disabled = !img || !canAnalyze();
+  readiness();
+}
+// Live "why is Analyze off / on" feedback — never a silent grey button.
+function readiness() {
+  const el = $('#ready'); if (!el) return;
+  if (!img) { el.innerHTML = ''; return; }
+  if (mode === 'main') {
+    const st = MODES.main.targets.filter(([k]) => k.startsWith('s'));
+    const ready = st.filter(([k]) => pts[k].length >= 3).length;
+    const two = st.filter(([k]) => pts[k].length === 2).length;
+    el.innerHTML = canAnalyze()
+      ? `<b style="color:#7ee0a8">Ready — tap Analyze.</b> ${ready} stripes with 3+ points.`
+      : `<b style="color:#f0d97a">${ready}/${st.length} stripes ready</b> — need ≥3 points on ≥2 stripes.`
+        + (two ? ` ${two} stripe${two > 1 ? 's have' : ' has'} only 2 points — add a tap on the belly (the curve), not the straight line.` : '');
+  } else {
+    const need = ['jibLo', 'jibHi', 'mainLo', 'mainHi'];
+    const ready = need.filter((k) => pts[k].length >= 3).length;
+    el.innerHTML = canAnalyze()
+      ? `<b style="color:#7ee0a8">Ready — tap Analyze.</b>`
+      : `<b style="color:#f0d97a">${ready}/4 lines ready</b> — each of jib low/high + main low/high needs ≥3 points along its curve.`;
+  }
 }
 function canAnalyze() {
   if (mode === 'main') return MODES.main.targets.filter(([k]) => k.startsWith('s') && pts[k].length >= 3).length >= 2;
@@ -413,6 +487,8 @@ $('#analyze').addEventListener('click', () => {
   try {
     if (mode === 'main') analyzeMain(tws); else analyzeSlot();
   } catch (err) { showDecision('act', 'Could not read that — ' + err.message, ''); }
+  // the result renders below a tall photo — bring it into view so it's never "nothing happened"
+  $('#decision').scrollIntoView({ behavior: 'smooth', block: 'center' });
 });
 
 function analyzeMain(tws) {
@@ -457,6 +533,12 @@ function renderShape(shape, dx) {
     + `Targets are literature defaults for now — they get replaced by your own fast-shape medians as the photo library fills.`;
 }
 
+$('#guideBtn').addEventListener('click', () => $('#guide').classList.toggle('hidden'));
+// Prefer a real Little Johnka reference photo (ui/frame-guide.jpg) if present; else keep the schematic.
+(() => { const ref = $('#frameRef'); if (!ref) return;
+  ref.onload = () => { ref.style.display = 'block'; const sv = $('#frameSvg'); if (sv) sv.style.display = 'none'; };
+  ref.onerror = () => { ref.style.display = 'none'; };
+  ref.src = 'frame-guide.jpg'; })();
 renderTargets(); syncButtons();
 </script>
 <script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}</script>
